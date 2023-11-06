@@ -1,6 +1,7 @@
 use serde::de::*;
 use serde::forward_to_deserialize_any;
 use serde::ser::SerializeMap;
+use serde::ser::SerializeSeq;
 
 #[macro_use]
 mod macros;
@@ -39,6 +40,24 @@ impl<'de> Deserializer<'de> for Lit<&'static str> {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+impl serde::ser::Serialize for Lit<i64> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_i64(self.0)
+    }
+}
+
+impl serde::ser::Serialize for Lit<&'static str> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.0)
     }
 }
 
@@ -86,6 +105,47 @@ impl serde::ser::Serialize for EmptyMap {
         S: serde::Serializer,
     {
         serializer.serialize_map(Some(0))?.end()
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct EmptyList;
+struct EmptyListState;
+
+impl<'de> serde::de::Deserializer<'de> for EmptyList {
+    type Error = serde::de::value::Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_seq(EmptyListState)
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+impl<'de> serde::de::SeqAccess<'de> for EmptyListState {
+    type Error = serde::de::value::Error;
+
+    fn next_element_seed<T>(&mut self, _seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+}
+
+impl serde::ser::Serialize for EmptyList {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_seq(Some(0))?.end()
     }
 }
 

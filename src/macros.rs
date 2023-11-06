@@ -373,7 +373,7 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::Array(json_internal_vec![])
+        $crate::EmptyList
     };
 
     ([ $($tt:tt)+ ]) => {
