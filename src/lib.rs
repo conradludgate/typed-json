@@ -249,4 +249,17 @@ mod tests {
         assert_eq!(x, [123, 456]);
         assert_eq!(y, [123, 456]);
     }
+
+    #[test]
+    fn array_ser() {
+        serde_test::assert_ser_tokens(
+            &json!([123, 456]),
+            &[
+                Token::Seq { len: Some(2) },
+                Token::I64(123),
+                Token::I64(456),
+                Token::SeqEnd,
+            ],
+        );
+    }
 }

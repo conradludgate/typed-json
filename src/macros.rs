@@ -132,6 +132,66 @@ macro_rules! json_internal {
         json_unexpected!($unexpected)
     };
 
+    ////
+
+    // Done.
+    (@arrayser $seed:ident []) => {};
+
+    // Done with trailing comma.
+    (@arrayser $seed:ident [$($elems:expr,)*]) => {
+        json_internal![@arrayser $seed [$($elems),*]]
+    };
+
+    // Done without trailing comma.
+    (@arrayser $seed:ident [$first:expr $(, $elems:expr)*]) => {
+        serde::ser::SerializeSeq::serialize_element(&mut $seed, &$first)?;
+        json_internal![@arrayser $seed [$($elems),*]]
+    };
+
+    // Next element is `null`.
+    (@arrayser $seed:ident [$($elems:expr,)*] null $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!(null)] $($rest)*)
+    };
+
+    // Next element is `true`.
+    (@arrayser $seed:ident [$($elems:expr,)*] true $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!(true)] $($rest)*)
+    };
+
+    // Next element is `false`.
+    (@arrayser $seed:ident [$($elems:expr,)*] false $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!(false)] $($rest)*)
+    };
+
+    // Next element is an array.
+    (@arrayser $seed:ident [$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!([$($array)*])] $($rest)*)
+    };
+
+    // Next element is a map.
+    (@arrayser $seed:ident [$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!({$($map)*})] $($rest)*)
+    };
+
+    // Next element is an expression followed by comma.
+    (@arrayser $seed:ident [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!($next),] $($rest)*)
+    };
+
+    // Last element is an expression with no trailing comma.
+    (@arrayser $seed:ident [$($elems:expr,)*] $last:expr) => {
+        json_internal!(@arrayser $seed [$($elems,)* json_internal!($last)])
+    };
+
+    // Comma after the most recent element.
+    (@arrayser $seed:ident [$($elems:expr),*] , $($rest:tt)*) => {
+        json_internal!(@arrayser $seed [$($elems,)*] $($rest)*)
+    };
+
+    // Unexpected token after most recent element.
+    (@arrayser $seed:ident [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected)
+    };
     //////////////////////////////////////////////////////////////////////////
     // TT muncher for parsing the inside of an object {...}. Each entry is
     // inserted into the given map variable.
@@ -510,6 +570,17 @@ macro_rules! json_internal {
             }
         }
 
+        impl serde::ser::Serialize for List {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let mut seq = serializer.serialize_seq(Some(json_internal_length!(@array [] $($tt)+)))?;
+                json_internal!(@arrayser seq [] $($tt)+);
+                serde::ser::SerializeSeq::end(seq)
+            }
+        }
+
         List
     }};
 
@@ -620,6 +691,65 @@ macro_rules! json_expect_expr_comma {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_internal_length {
+    // Done.
+    (@array []) => {
+        0
+    };
+    // Done with trailing comma.
+    (@array [$($elems:expr,)*]) => {
+        json_internal_length![@array [$($elems),*]]
+    };
+
+    // Done without trailing comma.
+    (@array [$first:expr $(, $rest:expr)*]) => {
+        1 + json_internal_length![@array [$($rest),*]]
+    };
+
+    // Next element is `null`.
+    (@array [$($elems:expr,)*] null $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!(null)] $($rest)*)
+    };
+
+    // Next element is `true`.
+    (@array [$($elems:expr,)*] true $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!(true)] $($rest)*)
+    };
+
+    // Next element is `false`.
+    (@array [$($elems:expr,)*] false $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!(false)] $($rest)*)
+    };
+
+    // Next element is an array.
+    (@array [$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!([$($array)*])] $($rest)*)
+    };
+
+    // Next element is a map.
+    (@array [$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!({$($map)*})] $($rest)*)
+    };
+
+    // Next element is an expression followed by comma.
+    (@array [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)* json_internal!($next),] $($rest)*)
+    };
+
+    // Last element is an expression with no trailing comma.
+    (@array [$($elems:expr,)*] $last:expr) => {
+        json_internal_length!(@array [$($elems,)* json_internal!($last)])
+    };
+
+    // Comma after the most recent element.
+    (@array [$($elems:expr),*] , $($rest:tt)*) => {
+        json_internal_length!(@array [$($elems,)*] $($rest)*)
+    };
+
+    // Unexpected token after most recent element.
+    (@array [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected)
+    };
+
     // Done.
     (@object () () ()) => {};
 
