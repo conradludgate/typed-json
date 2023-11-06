@@ -1,73 +1,9 @@
-#[macro_export(local_inner_macros)]
+#[macro_export]
 macro_rules! json {
     ( $($tt:tt)* ) => { json_internal!($($tt)*) };
 }
 
-// #[macro_export(local_inner_macros)]
-// #[doc(hidden)]
-// macro_rules! json_internal {
-//     ({ $($tt:tt)+ }) => {{
-//     }};
-
-//     (@key ($f:expr) $n:ident ($i:expr) ($($key:tt)*) (: $($rest:tt)*)) => {
-//         if $n == $i {
-//             $f.deserialize(json_internal!($($key)*))?
-//         } else {
-//             json_internal!(@skipvalue ($f) $n ($i + 1) () ($($rest)*))
-//         }
-//     };
-//     (@key ($f:expr) $n:ident ($i:expr) ($($key:tt)*) ($tt:tt $($rest:tt)*)) => {
-//         json_internal!(@key ($f) $n ($i) ($($key)* $tt) ($($rest)*))
-//     };
-//     (@skipvalue ($f:expr) $n:ident ($i:expr) () (, $($rest:tt)+)) => {
-//         json_internal!(@key ($f) $n ($i + 1) () ($($rest)*))
-//     };
-//     (@skipvalue ($f:expr) $n:ident ($i:expr) () ($(,)?)) => {
-//         if $n == $i + 1 {
-//             return Ok(None)
-//         } else {
-//             return Err(<serde::de::value::Error as serde::de::Error>::custom("foobar"))
-//         }
-//     };
-//     (@skipvalue ($f:expr) $n:ident ($i:expr) () ($tt:tt $($rest:tt)*)) => {
-//         json_internal!(@skipvalue ($f) $n ($i) () ($($rest)*))
-//     };
-
-//     (@value ($f:expr) $n:ident ($i:expr) ($($value:tt)*) (, $($rest:tt)*)) => {
-//         if $n == $i {
-//             $f.deserialize(json_internal!($($value)*))?
-//         } else {
-//             json_internal!(@skipkey ($f) $n ($i + 1) () ($($rest)*))
-//         }
-//     };
-//     (@value ($f:expr) $n:ident ($i:expr) ($($value:tt)*) ($(,)?)) => {
-//         if $n == $i {
-//             $f.deserialize(json_internal!($($value)*))?
-//         } else {
-//             return Err(<serde::de::value::Error as serde::de::Error>::custom("foobar"))
-//         }
-//     };
-//     (@value ($f:expr) $n:ident ($i:expr) ($($value:tt)*) ($tt:tt $($rest:tt)*)) => {
-//         json_internal!(@value ($f) $n ($i) ($($value)* $tt) ($($rest)*))
-//     };
-//     (@skipkey ($f:expr) $n:ident ($i:expr) () (: $($rest:tt)+)) => {
-//         json_internal!(@value ($f) $n ($i + 1) () ($($rest)*))
-//     };
-//     (@skipkey ($f:expr) $n:ident ($i:expr) () ($tt:tt $($rest:tt)*)) => {
-//         json_internal!(@skipkey ($f) $n ($i) () ($($rest)*))
-//     };
-
-//     ($x:literal) => { $crate::Lit($x) };
-// }
-
-// Rocket relies on this because they export their own `json!` with a different
-// doc comment than ours, and various Rust bugs prevent them from calling our
-// `json!` from their `json!` so they call `json_internal!` directly. Check with
-// @SergioBenitez before making breaking changes to this macro.
-//
-// Changes are fine as long as `json_internal!` does not call any new helper
-// macros and can still be invoked as `json_internal!($($json)+)`.
-#[macro_export(local_inner_macros)]
+#[macro_export]
 #[doc(hidden)]
 macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
