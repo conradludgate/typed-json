@@ -212,6 +212,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use serde::Deserialize;
+    use serde_test::Token;
 
     #[derive(Debug, Deserialize)]
     struct Something {
@@ -225,6 +226,19 @@ mod tests {
         let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
         assert_eq!(x.foo, 123);
         assert_eq!(y["foo"], 123);
+    }
+
+    #[test]
+    fn object_ser() {
+        serde_test::assert_ser_tokens(
+            &json!({"foo": 123}),
+            &[
+                Token::Map { len: Some(1) },
+                Token::Str("foo"),
+                Token::I64(123),
+                Token::MapEnd,
+            ],
+        );
     }
 
     #[test]

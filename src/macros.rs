@@ -352,6 +352,104 @@ macro_rules! json_internal {
         json_internal!(@objectkey $seed $n ($i) ($($key)* $tt) ($($rest)*) ($($rest)*))
     };
 
+    ////
+
+    // Done.
+    (@objectser $seed:ident () () ()) => {};
+
+    // Insert the current entry followed by trailing comma.
+    (@objectser $seed:ident [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
+        serde::ser::SerializeMap::serialize_key(&mut $seed, &json_internal!($($key)*))?;
+        serde::ser::SerializeMap::serialize_value(&mut $seed, &$value)?;
+    };
+
+    // Current entry followed by unexpected token.
+    (@objectser $seed:ident [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected)
+    };
+
+    // Insert the last entry without trailing comma.
+    (@objectser $seed:ident [$($key:tt)+] ($value:expr)) => {
+        serde::ser::SerializeMap::serialize_key(&mut $seed, &json_internal!($($key)*))?;
+        serde::ser::SerializeMap::serialize_value(&mut $seed, &$value)?;
+    };
+
+    // Next value is `null`.
+    (@objectser $seed:ident ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!(null)) $($rest)*)
+    };
+
+    // Next value is `true`.
+    (@objectser $seed:ident ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!(true)) $($rest)*)
+    };
+
+    // Next value is `false`.
+    (@objectser $seed:ident ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!(false)) $($rest)*)
+    };
+
+    // Next value is an array.
+    (@objectser $seed:ident ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!([$($array)*])) $($rest)*)
+    };
+
+    // Next value is a map.
+    (@objectser $seed:ident ($($key:tt)+) (: {$($map:tt)*} $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!({$($map)*})) $($rest)*)
+    };
+
+    // Next value is an expression followed by comma.
+    (@objectser $seed:ident ($($key:tt)+) (: $value:expr , $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!($value)) , $($rest)*)
+    };
+
+    // Last value is an expression with no trailing comma.
+    (@objectser $seed:ident ($($key:tt)+) (: $value:expr) $copy:tt) => {
+        json_internal!(@objectser $seed [$($key)+] (json_internal!($value)))
+    };
+
+    // Missing value for last entry. Trigger a reasonable error message.
+    (@objectser $seed:ident ($($key:tt)+) (:) $copy:tt) => {
+        // "unexpected end of macro invocation"
+        json_internal!()
+    };
+
+    // Missing colon and value for last entry. Trigger a reasonable error
+    // message.
+    (@objectser $seed:ident ($($key:tt)+) () $copy:tt) => {
+        // "unexpected end of macro invocation"
+        json_internal!()
+    };
+
+    // Misplaced colon. Trigger a reasonable error message.
+    (@objectser $seed:ident () (: $($rest:tt)*) ($colon:tt $($copy:tt)*)) => {
+        // Takes no arguments so "no rules expected the token `:`".
+        json_unexpected!($colon)
+    };
+
+    // Found a comma inside a key. Trigger a reasonable error message.
+    (@objectser $seed:ident ($($key:tt)*) (, $($rest:tt)*) ($comma:tt $($copy:tt)*)) => {
+        // Takes no arguments so "no rules expected the token `,`".
+        json_unexpected!($comma)
+    };
+
+    // Key is fully parenthesized. This avoids clippy double_parens false
+    // positives because the parenthesization may be necessary here.
+    (@objectser $seed:ident () (($key:expr) : $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed ($key) (: $($rest)*) (: $($rest)*))
+    };
+
+    // Refuse to absorb colon token into key expression.
+    (@objectser $seed:ident ($($key:tt)*) (: $($unexpected:tt)+) $copy:tt) => {
+        json_expect_expr_comma!($($unexpected)+)
+    };
+
+    // Munch a token into the current key.
+    (@objectser $seed:ident ($($key:tt)*) ($tt:tt $($rest:tt)*) $copy:tt) => {
+        json_internal!(@objectser $seed ($($key)* $tt) ($($rest)*) ($($rest)*))
+    };
+
 
     //////////////////////////////////////////////////////////////////////////
     // The main implementation.
@@ -464,6 +562,17 @@ macro_rules! json_internal {
             }
         }
 
+        impl serde::ser::Serialize for Map {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let mut seq = serializer.serialize_map(Some(json_internal_length!(@object () ($($tt)+) ($($tt)+))))?;
+                json_internal!(@objectser seq () ($($tt)+) ($($tt)+));
+                serde::ser::SerializeMap::end(seq)
+            }
+        }
+
         Map
     }};
 
@@ -506,4 +615,103 @@ macro_rules! json_unexpected {
 #[doc(hidden)]
 macro_rules! json_expect_expr_comma {
     ($e:expr , $($tt:tt)*) => {};
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! json_internal_length {
+    // Done.
+    (@object () () ()) => {};
+
+    // Insert the current entry followed by trailing comma.
+    (@object [] () , $($rest:tt)*) => {
+        1 + json_internal_length!(@object () ($($rest)*) ($($rest)*))
+    };
+
+    // Current entry followed by unexpected token.
+    (@object [] () $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected)
+    };
+
+    // Insert the last entry without trailing comma.
+    (@object [] ()) => {
+        1
+    };
+
+    // Next value is `null`.
+    (@object ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () $($rest)*)
+    };
+
+    // Next value is `true`.
+    (@object ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () $($rest)*)
+    };
+
+    // Next value is `false`.
+    (@object ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () $($rest)*)
+    };
+
+    // Next value is an array.
+    (@object ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () $($rest)*)
+    };
+
+    // Next value is a map.
+    (@object ($($key:tt)+) (: {$($map:tt)*} $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () $($rest)*)
+    };
+
+    // Next value is an expression followed by comma.
+    (@object ($($key:tt)+) (: $value:expr , $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object [] () , $($rest)*)
+    };
+
+    // Last value is an expression with no trailing comma.
+    (@object ($($key:tt)+) (: $value:expr) $copy:tt) => {
+        json_internal_length!(@object [] ())
+    };
+
+    // Missing value for last entry. Trigger a reasonable error message.
+    (@object ($($key:tt)+) (:) $copy:tt) => {
+        // "unexpected end of macro invocation"
+        json_internal_length!()
+    };
+
+    // Missing colon and value for last entry. Trigger a reasonable error
+    // message.
+    (@object ($($key:tt)+) () $copy:tt) => {
+        // "unexpected end of macro invocation"
+        json_internal_length!()
+    };
+
+    // Misplaced colon. Trigger a reasonable error message.
+    (@object () (: $($rest:tt)*) ($colon:tt $($copy:tt)*)) => {
+        // Takes no arguments so "no rules expected the token `:`".
+        json_unexpected!($colon)
+    };
+
+    // Found a comma inside a key. Trigger a reasonable error message.
+    (@object ($($key:tt)*) (, $($rest:tt)*) ($comma:tt $($copy:tt)*)) => {
+        // Takes no arguments so "no rules expected the token `,`".
+        json_unexpected!($comma)
+    };
+
+    // Key is fully parenthesized. This avoids clippy double_parens false
+    // positives because the parenthesization may be necessary here.
+    (@object () (($key:expr) : $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object ($key) (: $($rest)*) (: $($rest)*))
+    };
+
+    // Refuse to absorb colon token into key expression.
+    (@object ($($key:tt)*) (: $($unexpected:tt)+) $copy:tt) => {
+        json_expect_expr_comma!($($unexpected)+)
+    };
+
+    // Munch a token into the current key.
+    (@object ($($key:tt)*) ($tt:tt $($rest:tt)*) $copy:tt) => {
+        json_internal_length!(@object ($($key)* $tt) ($($rest)*) ($($rest)*))
+    };
+
 }
