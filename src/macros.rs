@@ -147,7 +147,7 @@ macro_rules! json_internal {
     (@objectvalue $seed:ident $n:ident ($i:expr)  () () ()) => {};
 
     // Insert the current entry followed by trailing comma.
-    (@objectvalue $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
+    (@objectvalue $seed:ident $n:ident ($i:expr) [] ($value:expr) , $($rest:tt)*) => {
         if $n == $i {
             $seed.deserialize($value)?
         } else {
@@ -156,12 +156,12 @@ macro_rules! json_internal {
     };
 
     // Current entry followed by unexpected token.
-    (@objectvalue $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
+    (@objectvalue $seed:ident $n:ident ($i:expr) [] ($value:expr) $unexpected:tt $($rest:tt)*) => {
         json_unexpected!($unexpected)
     };
 
     // Insert the last entry without trailing comma.
-    (@objectvalue $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr)) => {
+    (@objectvalue $seed:ident $n:ident ($i:expr) [] ($value:expr)) => {
         if $n == $i {
             $seed.deserialize($value)?
         } else {
@@ -171,37 +171,37 @@ macro_rules! json_internal {
 
     // Next value is `null`.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!(null)) $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!(null)) $($rest)*)
     };
 
     // Next value is `true`.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!(true)) $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!(true)) $($rest)*)
     };
 
     // Next value is `false`.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!(false)) $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!(false)) $($rest)*)
     };
 
     // Next value is an array.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!([$($array)*])) $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!([$($array)*])) $($rest)*)
     };
 
     // Next value is a map.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: {$($map:tt)*} $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!({$($map)*})) $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!({$($map)*})) $($rest)*)
     };
 
     // Next value is an expression followed by comma.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: $value:expr , $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!($value)) , $($rest)*)
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!($value)) , $($rest)*)
     };
 
     // Last value is an expression with no trailing comma.
     (@objectvalue $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: $value:expr) $copy:tt) => {
-        json_internal!(@objectvalue $seed $n ($i) [$($key)+] (json_internal!($value)))
+        json_internal!(@objectvalue $seed $n ($i) [] (json_internal!($value)))
     };
 
     // Missing value for last entry. Trigger a reasonable error message.
@@ -253,7 +253,7 @@ macro_rules! json_internal {
     (@objectkey $seed:ident $n:ident ($i:expr)  () () ()) => {};
 
     // Insert the current entry followed by trailing comma.
-    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
+    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+] , $($rest:tt)*) => {
         if $n == $i {
             $seed.deserialize(json_internal!($($key)*))?
         } else {
@@ -262,12 +262,12 @@ macro_rules! json_internal {
     };
 
     // Current entry followed by unexpected token.
-    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
+    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+] $unexpected:tt $($rest:tt)*) => {
         json_unexpected!($unexpected)
     };
 
     // Insert the last entry without trailing comma.
-    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+] ($value:expr)) => {
+    (@objectkey $seed:ident $n:ident ($i:expr) [$($key:tt)+]) => {
         if $n == $i {
             $seed.deserialize(json_internal!($($key)*))?
         } else if $n == $i + 2 {
@@ -279,37 +279,37 @@ macro_rules! json_internal {
 
     // Next value is `null`.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!(null)) $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] $($rest)*)
     };
 
     // Next value is `true`.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!(true)) $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] $($rest)*)
     };
 
     // Next value is `false`.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!(false)) $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] $($rest)*)
     };
 
     // Next value is an array.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!([$($array)*])) $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] $($rest)*)
     };
 
     // Next value is a map.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: {$($map:tt)*} $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!({$($map)*})) $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] $($rest)*)
     };
 
     // Next value is an expression followed by comma.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: $value:expr , $($rest:tt)*) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!($value)) , $($rest)*)
+        json_internal!(@objectkey $seed $n ($i) [$($key)+] , $($rest)*)
     };
 
     // Last value is an expression with no trailing comma.
     (@objectkey $seed:ident $n:ident ($i:expr) ($($key:tt)+) (: $value:expr) $copy:tt) => {
-        json_internal!(@objectkey $seed $n ($i) [$($key)+] (json_internal!($value)))
+        json_internal!(@objectkey $seed $n ($i) [$($key)+])
     };
 
     // Missing value for last entry. Trigger a reasonable error message.
