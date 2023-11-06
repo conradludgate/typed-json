@@ -219,11 +219,20 @@ mod tests {
     }
 
     #[test]
-    fn main() {
+    fn object() {
         let data = json!({"foo": 123});
         let x = Something::deserialize(data).unwrap();
         let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
         assert_eq!(x.foo, 123);
         assert_eq!(y["foo"], 123);
+    }
+
+    #[test]
+    fn array() {
+        let data = json!([123, 456]);
+        let x = <[i32; 2]>::deserialize(data).unwrap();
+        let y = <Vec<i32>>::deserialize(data).unwrap();
+        assert_eq!(x, [123, 456]);
+        assert_eq!(y, [123, 456]);
     }
 }
