@@ -1,0 +1,10 @@
+[package]
+name = "typed_json_test"
+version = "0.0.0"
+authors = ["Conrad Ludgate <conradludgate@gmail.com>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+typed-json = { path = "../../..", default-features = false }
+serde_json = "1"

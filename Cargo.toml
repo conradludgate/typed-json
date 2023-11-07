@@ -29,5 +29,9 @@ serde-json-core = "0.5.1"
 harness = false
 name = "serialize_string"
 
+[[bench]]
+harness = false
+name = "serialize_large"
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

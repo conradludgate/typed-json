@@ -84,3 +84,23 @@ or [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/in
 [dependencies]
 serde-json-core = "0.5.1"
 ```
+
+# Compile time benchmarks
+
+Using the JSON from ... and running `hyperfine "touch src/main.rs && cargo build --release"` with serde_json and typed_json, I measured:
+
+## serde_json
+```
+Benchmark 1: touch src/main.rs && cargo build --release
+  Time (mean ± σ):      1.287 s ±  0.022 s    [User: 1.555 s, System: 0.092 s]
+  Range (min … max):    1.245 s …  1.319 s    10 runs
+```
+
+## typed_json
+```
+Benchmark 1: touch src/main.rs && cargo build --release
+  Time (mean ± σ):      2.616 s ±  0.024 s    [User: 3.936 s, System: 0.118 s]
+  Range (min … max):    2.582 s …  2.651 s    10 runs
+```
+
+So, keep in mind that typed_json is almost 2x slower to compile.
