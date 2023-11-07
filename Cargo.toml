@@ -1,6 +1,6 @@
 [package]
 name = "typed-json"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Conrad Ludgate <conradludgate@gmail.com>"]
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
