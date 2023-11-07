@@ -87,20 +87,28 @@ serde-json-core = "0.5.1"
 
 # Compile time benchmarks
 
-Using the JSON from ... and running `hyperfine "touch src/main.rs && cargo build --release"` with serde_json and typed_json, I measured:
+There's no such thing as a true zero-cost-abstraction.
 
-## serde_json
-```
-Benchmark 1: touch src/main.rs && cargo build --release
-  Time (mean ± σ):      1.287 s ±  0.022 s    [User: 1.555 s, System: 0.092 s]
-  Range (min … max):    1.245 s …  1.319 s    10 runs
-```
+I measured the compile times using the large service JSON from https://kubernetesjsonschema.dev/ and running
 
-## typed_json
-```
-Benchmark 1: touch src/main.rs && cargo build --release
-  Time (mean ± σ):      2.616 s ±  0.024 s    [User: 3.936 s, System: 0.118 s]
-  Range (min … max):    2.582 s …  2.651 s    10 runs
+```sh
+$ hyperfine \
+    --command-name "typed_json" \
+    "pushd tests/crates/stress1 && touch src/main.rs && cargo build --release" \
+    --command-name "serde_json" \
+    "pushd tests/crates/stress2 && touch src/main.rs && cargo build --release"
+
+Benchmark 1: typed_json
+  Time (mean ± σ):      2.616 s ±  0.014 s    [User: 3.932 s, System: 0.118 s]
+  Range (min … max):    2.588 s …  2.638 s    10 runs
+
+Benchmark 2: serde_json
+  Time (mean ± σ):      1.281 s ±  0.014 s    [User: 1.554 s, System: 0.088 s]
+  Range (min … max):    1.268 s …  1.305 s    10 runs
+
+Summary
+  serde_json ran
+    2.04 ± 0.02 times faster than typed_json
 ```
 
 So, keep in mind that typed_json is almost 2x slower to compile.

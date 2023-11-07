@@ -85,6 +85,35 @@
 //! [dependencies]
 //! serde-json-core = "0.5.1"
 //! ```
+//!
+//! # Compile time benchmarks
+//!
+//! There's no such thing as a true zero-cost-abstraction.
+//!
+//! I measured the compile times using the large service JSON from https://kubernetesjsonschema.dev/ and running
+//!
+//! ```sh
+//! $ hyperfine \
+//!     --command-name "typed_json" \
+//!     "pushd tests/crates/stress1 && touch src/main.rs && cargo build --release" \
+//!     --command-name "serde_json" \
+//!     "pushd tests/crates/stress2 && touch src/main.rs && cargo build --release"
+//!
+//! Benchmark 1: typed_json
+//!   Time (mean ± σ):      2.616 s ±  0.014 s    [User: 3.932 s, System: 0.118 s]
+//!   Range (min … max):    2.588 s …  2.638 s    10 runs
+//!
+//! Benchmark 2: serde_json
+//!   Time (mean ± σ):      1.281 s ±  0.014 s    [User: 1.554 s, System: 0.088 s]
+//!   Range (min … max):    1.268 s …  1.305 s    10 runs
+//!
+//! Summary
+//!   serde_json ran
+//!     2.04 ± 0.02 times faster than typed_json
+//! ```
+//!
+//! So, keep in mind that typed_json is almost 2x slower to compile.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
@@ -182,7 +211,7 @@ where
                     seed.deserialize(k).map(Some)
                 }
                 KV::V(_) => Err(<serde::de::value::Error as serde::de::Error>::custom(
-                    "foobar",
+                    "should not call next_key when expecting a value",
                 )),
             }
         } else {
@@ -198,7 +227,7 @@ where
             match t {
                 KV::V(v) => seed.deserialize(v),
                 KV::Pair(..) => Err(<serde::de::value::Error as serde::de::Error>::custom(
-                    "foobar",
+                    "should not call next_value when expecting a key",
                 )),
             }
         } else {
@@ -242,7 +271,7 @@ impl<'de> KeyValuePairDe<'de> for () {
         V: serde::de::DeserializeSeed<'de>,
     {
         Err(<serde::de::value::Error as serde::de::Error>::custom(
-            "foobar",
+            "should not call next_value when expecting a key",
         ))
     }
 }
