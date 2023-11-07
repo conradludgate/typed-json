@@ -1,7 +1,5 @@
 use serde::de::*;
 use serde::forward_to_deserialize_any;
-use serde::ser::SerializeMap;
-use serde::ser::SerializeSeq;
 
 #[macro_use]
 mod macros;
@@ -62,94 +60,7 @@ impl serde::ser::Serialize for Lit<&str> {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct EmptyMap;
-struct EmptyMapState;
-
-impl<'de> serde::de::Deserializer<'de> for EmptyMap {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_map(EmptyMapState)
-    }
-
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-impl<'de> serde::de::MapAccess<'de> for EmptyMapState {
-    type Error = serde::de::value::Error;
-
-    fn next_key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>, Self::Error>
-    where
-        K: serde::de::DeserializeSeed<'de>,
-    {
-        Ok(None)
-    }
-    fn next_value_seed<V>(&mut self, _seed: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::DeserializeSeed<'de>,
-    {
-        Err(serde::de::value::Error::custom("foo"))
-    }
-}
-
-impl serde::ser::Serialize for EmptyMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_map(Some(0))?.end()
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct EmptyList;
-struct EmptyListState;
-
-impl<'de> serde::de::Deserializer<'de> for EmptyList {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_seq(EmptyListState)
-    }
-
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-impl<'de> serde::de::SeqAccess<'de> for EmptyListState {
-    type Error = serde::de::value::Error;
-
-    fn next_element_seed<T>(&mut self, _seed: T) -> Result<Option<T::Value>, Self::Error>
-    where
-        T: DeserializeSeed<'de>,
-    {
-        Ok(None)
-    }
-}
-
-impl serde::ser::Serialize for EmptyList {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_seq(Some(0))?.end()
-    }
-}
-
+#[derive(Clone, Copy)]
 struct Null;
 
 impl<'de> serde::de::Deserializer<'de> for Null {
@@ -178,6 +89,7 @@ impl serde::ser::Serialize for Null {
     }
 }
 
+#[derive(Clone, Copy)]
 struct Bool(bool);
 
 impl<'de> serde::de::Deserializer<'de> for Bool {
@@ -207,15 +119,17 @@ impl serde::ser::Serialize for Bool {
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy)]
 pub enum KV<T, U> {
     Pair(T, U),
     V(U),
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy)]
 pub struct KVList<T, U, V> {
-    first: Option<KV<T, U>>,
-    second: V,
+    pub first: Option<KV<T, U>>,
+    pub second: V,
 }
 
 impl<'de, T, U, V> KeyValuePair<'de> for KVList<T, U, V>
@@ -368,8 +282,8 @@ impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct List1<T, U> {
-    first: Option<T>,
-    second: U,
+    pub first: Option<T>,
+    pub second: U,
 }
 
 impl<'de, T, U> Item<'de> for List1<T, U>
