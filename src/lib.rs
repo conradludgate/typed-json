@@ -71,77 +71,34 @@
 //! [dependencies]
 //! serde-json-core = "0.5.1"
 //! ```
+//!
+//! # Comparison to `serde_json`
+//!
+//! This crate provides a typed version of `serde_json::json!()`[serde_json::json]. What does that mean? It means it performs 0 allocations and it creates
+//! a custom type for the JSON object you are representing. For one-off JSON documents, this ends up being considerably faster to encode.
+//! This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0.108"`.
+//!
+//! ## Benchmark
+//!
+//! The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
+//! the `typed_json_core` benchmark uses `serde-json-core` to encode to a [`heapless::String`](serde_json_core::heapless::String).
+//!
+//! ```
+//! Timer precision: 41 ns
+//! serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
+//! ├─ serde_json       707 ns        │ 36.62 µs      │ 791 ns        │ 1.096 µs      │ 10000   │ 10000
+//! ├─ typed_json       154 ns        │ 844.1 ns      │ 163.1 ns      │ 163.5 ns      │ 10000   │ 320000
+//! ╰─ typed_json_core  215.2 ns      │ 742.5 ns      │ 229.5 ns      │ 229.7 ns      │ 10000   │ 320000
+//! ```
 #![cfg_attr(not(feature = "std"), no_std)]
-
-use serde::de::*;
-use serde::forward_to_deserialize_any;
 
 #[macro_use]
 mod macros;
-
-#[doc(hidden)]
-pub fn serialize<
-    T: serde::Serialize + for<'de> serde::Deserializer<'de, Error = serde::de::value::Error>,
->(
-    t: T,
-) -> T {
-    t
-}
+mod expr_de;
 
 #[derive(Clone, Copy)]
 #[doc(hidden)]
 pub struct Expr<T>(pub T);
-impl<'de> Deserializer<'de> for Expr<i64> {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_i64(self.0)
-    }
-
-    forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-impl<'de> Deserializer<'de> for Expr<&str> {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_str(self.0)
-    }
-
-    forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'de> Deserializer<'de> for Expr<String> {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_string(self.0)
-    }
-
-    forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
 
 impl<S1: serde::ser::Serialize> serde::ser::Serialize for Expr<S1> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -213,15 +170,15 @@ pub struct KVList<T, U, V> {
     pub second: V,
 }
 
-impl<'de, T, U, V> KeyValuePair<'de> for KVList<T, U, V>
+impl<'de, T, U, V> KeyValuePairDe<'de> for KVList<T, U, V>
 where
-    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
-    U: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
-    V: KeyValuePair<'de>,
+    T: serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+    U: serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+    V: KeyValuePairDe<'de>,
 {
     fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
     where
-        K: DeserializeSeed<'de>,
+        K: serde::de::DeserializeSeed<'de>,
     {
         if let Some(t) = self.first.take() {
             match t {
@@ -240,7 +197,7 @@ where
 
     fn value_seed<W>(&mut self, seed: W) -> Result<W::Value, serde::de::value::Error>
     where
-        W: DeserializeSeed<'de>,
+        W: serde::de::DeserializeSeed<'de>,
     {
         if let Some(t) = self.first.take() {
             match t {
@@ -253,7 +210,13 @@ where
             self.second.value_seed(seed)
         }
     }
-
+}
+impl<T, U, V> KeyValuePairSer for KVList<T, U, V>
+where
+    T: serde::ser::Serialize,
+    U: serde::ser::Serialize,
+    V: KeyValuePairSer,
+{
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap,
@@ -271,23 +234,24 @@ where
     }
 }
 
-impl<'de> KeyValuePair<'de> for () {
+impl<'de> KeyValuePairDe<'de> for () {
     fn key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
     where
-        K: DeserializeSeed<'de>,
+        K: serde::de::DeserializeSeed<'de>,
     {
         Ok(None)
     }
 
     fn value_seed<V>(&mut self, _seed: V) -> Result<V::Value, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>,
+        V: serde::de::DeserializeSeed<'de>,
     {
         Err(<serde::de::value::Error as serde::de::Error>::custom(
             "foobar",
         ))
     }
-
+}
+impl KeyValuePairSer for () {
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap,
@@ -300,15 +264,16 @@ impl<'de> KeyValuePair<'de> for () {
     }
 }
 
-trait KeyValuePair<'de> {
+trait KeyValuePairDe<'de> {
     fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
     where
-        K: DeserializeSeed<'de>;
+        K: serde::de::DeserializeSeed<'de>;
 
     fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>;
-
+        V: serde::de::DeserializeSeed<'de>;
+}
+trait KeyValuePairSer {
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap;
@@ -321,7 +286,7 @@ pub struct Map<T>(pub T);
 
 struct MapState<T>(T);
 
-impl<'de, T: KeyValuePair<'de>> serde::de::Deserializer<'de> for Map<T> {
+impl<'de, T: KeyValuePairDe<'de>> serde::de::Deserializer<'de> for Map<T> {
     type Error = serde::de::value::Error;
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -335,7 +300,7 @@ impl<'de, T: KeyValuePair<'de>> serde::de::Deserializer<'de> for Map<T> {
         tuple_struct map struct enum identifier ignored_any
     }
 }
-impl<'de, T: KeyValuePair<'de>> serde::de::MapAccess<'de> for MapState<T> {
+impl<'de, T: KeyValuePairDe<'de>> serde::de::MapAccess<'de> for MapState<T> {
     type Error = serde::de::value::Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where
@@ -350,7 +315,7 @@ impl<'de, T: KeyValuePair<'de>> serde::de::MapAccess<'de> for MapState<T> {
         self.0.value_seed(seed)
     }
 }
-impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
+impl<T: KeyValuePairSer> serde::ser::Serialize for Map<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -368,14 +333,14 @@ pub struct List1<T, U> {
     pub second: U,
 }
 
-impl<'de, T, U> Item<'de> for List1<T, U>
+impl<'de, T, U> ItemDe<'de> for List1<T, U>
 where
-    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
-    U: Item<'de>,
+    T: serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+    U: ItemDe<'de>,
 {
     fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>,
+        V: serde::de::DeserializeSeed<'de>,
     {
         if let Some(t) = self.first.take() {
             seed.deserialize(t).map(Some)
@@ -383,7 +348,13 @@ where
             self.second.value_seed(seed)
         }
     }
+}
 
+impl<T, U> ItemSer for List1<T, U>
+where
+    T: serde::ser::Serialize,
+    U: ItemSer,
+{
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq,
@@ -400,14 +371,15 @@ where
     }
 }
 
-impl<'de> Item<'de> for () {
+impl<'de> ItemDe<'de> for () {
     fn value_seed<V>(&mut self, _seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>,
+        V: serde::de::DeserializeSeed<'de>,
     {
         Ok(None)
     }
-
+}
+impl ItemSer for () {
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq,
@@ -420,24 +392,25 @@ impl<'de> Item<'de> for () {
     }
 }
 
-trait Item<'de> {
+trait ItemDe<'de> {
     fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>;
+        V: serde::de::DeserializeSeed<'de>;
+}
 
+trait ItemSer {
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq;
     fn size(&self) -> usize;
 }
-
 #[derive(Copy, Clone)]
 #[doc(hidden)]
 pub struct List<T>(pub T);
 
 struct ListState<T>(T);
 
-impl<'de, T: Item<'de>> serde::de::Deserializer<'de> for List<T> {
+impl<'de, T: ItemDe<'de>> serde::de::Deserializer<'de> for List<T> {
     type Error = serde::de::value::Error;
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -451,16 +424,16 @@ impl<'de, T: Item<'de>> serde::de::Deserializer<'de> for List<T> {
         tuple_struct map struct enum identifier ignored_any
     }
 }
-impl<'de, K: Item<'de>> serde::de::SeqAccess<'de> for ListState<K> {
+impl<'de, K: ItemDe<'de>> serde::de::SeqAccess<'de> for ListState<K> {
     type Error = serde::de::value::Error;
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
     where
-        T: DeserializeSeed<'de>,
+        T: serde::de::DeserializeSeed<'de>,
     {
         self.0.value_seed(seed)
     }
 }
-impl<T: for<'de> Item<'de>> serde::ser::Serialize for List<T> {
+impl<T: ItemSer> serde::ser::Serialize for List<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -499,7 +472,7 @@ mod tests {
             &[
                 Token::Map { len: Some(1) },
                 Token::Str("foo"),
-                Token::I64(123),
+                Token::I32(123),
                 Token::MapEnd,
             ],
         );
@@ -520,8 +493,8 @@ mod tests {
             &json!([123, 456]),
             &[
                 Token::Seq { len: Some(2) },
-                Token::I64(123),
-                Token::I64(456),
+                Token::I32(123),
+                Token::I32(456),
                 Token::SeqEnd,
             ],
         );
@@ -544,8 +517,8 @@ mod tests {
                 Token::Map { len: Some(2) },
                 Token::Str("codes"),
                 Token::Seq { len: Some(2) },
-                Token::I64(123),
-                Token::I64(456),
+                Token::I32(123),
+                Token::I32(456),
                 Token::SeqEnd,
                 Token::Str("message"),
                 Token::Str("hello world"),

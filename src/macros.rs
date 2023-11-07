@@ -54,7 +54,7 @@
 macro_rules! json {
     // Hide distracting implementation details from the generated rustdoc.
     ($($json:tt)+) => {
-        $crate::serialize(json_internal!($($json)+))
+        json_internal!($($json)+)
     };
 }
 
