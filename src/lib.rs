@@ -8,6 +8,7 @@ mod macros;
 
 // -- library code --
 
+#[derive(Clone, Copy)]
 struct Lit<T>(T);
 impl<'de> Deserializer<'de> for Lit<i64> {
     type Error = serde::de::value::Error;
@@ -26,14 +27,14 @@ impl<'de> Deserializer<'de> for Lit<i64> {
     }
 }
 
-impl<'de> Deserializer<'de> for Lit<&'static str> {
+impl<'de> Deserializer<'de> for Lit<&str> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_borrowed_str(self.0)
+        visitor.visit_str(self.0)
     }
 
     forward_to_deserialize_any! {
@@ -52,7 +53,7 @@ impl serde::ser::Serialize for Lit<i64> {
     }
 }
 
-impl serde::ser::Serialize for Lit<&'static str> {
+impl serde::ser::Serialize for Lit<&str> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -270,8 +271,8 @@ where
         Ok(())
     }
 
-    fn len(&self) -> usize {
-        1 + self.second.len()
+    fn size(&self) -> usize {
+        1 + self.second.size()
     }
 }
 
@@ -299,7 +300,7 @@ impl<'de> KeyValuePair<'de> for () {
         Ok(())
     }
 
-    fn len(&self) -> usize {
+    fn size(&self) -> usize {
         0
     }
 }
@@ -316,7 +317,7 @@ pub trait KeyValuePair<'de> {
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap;
-    fn len(&self) -> usize;
+    fn size(&self) -> usize;
 }
 
 #[derive(Copy, Clone)]
@@ -358,13 +359,14 @@ impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
     where
         S: serde::Serializer,
     {
-        let mut seq = serializer.serialize_map(Some(self.0.len()))?;
+        let mut seq = serializer.serialize_map(Some(self.0.size()))?;
         self.0.serialize(&mut seq)?;
         serde::ser::SerializeMap::end(seq)
     }
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy)]
 pub struct List1<T, U> {
     first: Option<T>,
     second: U,
@@ -397,8 +399,8 @@ where
         Ok(())
     }
 
-    fn len(&self) -> usize {
-        1 + self.second.len()
+    fn size(&self) -> usize {
+        1 + self.second.size()
     }
 }
 
@@ -417,7 +419,7 @@ impl<'de> Item<'de> for () {
         Ok(())
     }
 
-    fn len(&self) -> usize {
+    fn size(&self) -> usize {
         0
     }
 }
@@ -430,7 +432,7 @@ pub trait Item<'de> {
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq;
-    fn len(&self) -> usize;
+    fn size(&self) -> usize;
 }
 
 #[derive(Copy, Clone)]
@@ -466,7 +468,7 @@ impl<T: for<'de> Item<'de>> serde::ser::Serialize for List<T> {
     where
         S: serde::Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        let mut seq = serializer.serialize_seq(Some(self.0.size()))?;
         self.0.serialize(&mut seq)?;
         serde::ser::SerializeSeq::end(seq)
     }
@@ -513,7 +515,7 @@ mod tests {
                 Token::MapEnd,
             ],
         );
-        let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
+        let y = <BTreeMap<String, i32>>::deserialize(data).unwrap();
         dbg!(y);
     }
 
@@ -539,7 +541,7 @@ mod tests {
                 Token::SeqEnd,
             ],
         );
-        let y = <BTreeSet<&'static str>>::deserialize(data).unwrap();
+        let y = <BTreeSet<String>>::deserialize(data).unwrap();
         dbg!(y);
     }
 
@@ -547,7 +549,7 @@ mod tests {
     fn object() {
         let data = json!({"foo": 123});
         let x = Something::deserialize(data).unwrap();
-        let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
+        let y = <BTreeMap<String, i32>>::deserialize(data).unwrap();
         assert_eq!(x.foo, 123);
         assert_eq!(y["foo"], 123);
     }

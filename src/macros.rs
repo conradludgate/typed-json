@@ -14,120 +14,60 @@ macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
 
     // Done with trailing comma.
-    (@array $seed:ident $n:ident [$($elems:expr,)*]) => {
-        json_internal_vec![$seed $n (0) $($elems,)*]
+    (@array [$($elems:expr,)*]) => {
+        json_internal_vec![$($elems,)*]
     };
 
     // Done without trailing comma.
-    (@array $seed:ident $n:ident [$($elems:expr),*]) => {
-        json_internal_vec![$seed $n (0) $($elems),*]
+    (@array [$($elems:expr),*]) => {
+        json_internal_vec![$($elems),*]
     };
 
     // Next element is `null`.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] null $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!(null)] $($rest)*)
+    (@array [$($elems:expr,)*] null $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!(null)] $($rest)*)
     };
 
     // Next element is `true`.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] true $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!(true)] $($rest)*)
+    (@array [$($elems:expr,)*] true $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!(true)] $($rest)*)
     };
 
     // Next element is `false`.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] false $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!(false)] $($rest)*)
+    (@array [$($elems:expr,)*] false $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!(false)] $($rest)*)
     };
 
     // Next element is an array.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!([$($array)*])] $($rest)*)
+    (@array [$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!([$($array)*])] $($rest)*)
     };
 
     // Next element is a map.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!({$($map)*})] $($rest)*)
+    (@array [$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!({$($map)*})] $($rest)*)
     };
 
     // Next element is an expression followed by comma.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!($next),] $($rest)*)
+    (@array [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)* json_internal!($next),] $($rest)*)
     };
 
     // Last element is an expression with no trailing comma.
-    (@array $seed:ident $n:ident [$($elems:expr,)*] $last:expr) => {
-        json_internal!(@array $seed $n [$($elems,)* json_internal!($last)])
+    (@array [$($elems:expr,)*] $last:expr) => {
+        json_internal!(@array [$($elems,)* json_internal!($last)])
     };
 
     // Comma after the most recent element.
-    (@array $seed:ident $n:ident [$($elems:expr),*] , $($rest:tt)*) => {
-        json_internal!(@array $seed $n [$($elems,)*] $($rest)*)
+    (@array [$($elems:expr),*] , $($rest:tt)*) => {
+        json_internal!(@array [$($elems,)*] $($rest)*)
     };
 
     // Unexpected token after most recent element.
-    (@array $seed:ident $n:ident [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
+    (@array [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
         json_unexpected!($unexpected)
     };
 
-    ////
-
-    // Done.
-    (@arrayser $seed:ident []) => {};
-
-    // Done with trailing comma.
-    (@arrayser $seed:ident [$($elems:expr,)*]) => {
-        json_internal![@arrayser $seed [$($elems),*]]
-    };
-
-    // Done without trailing comma.
-    (@arrayser $seed:ident [$first:expr $(, $elems:expr)*]) => {
-        serde::ser::SerializeSeq::serialize_element(&mut $seed, &$first)?;
-        json_internal![@arrayser $seed [$($elems),*]]
-    };
-
-    // Next element is `null`.
-    (@arrayser $seed:ident [$($elems:expr,)*] null $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!(null)] $($rest)*)
-    };
-
-    // Next element is `true`.
-    (@arrayser $seed:ident [$($elems:expr,)*] true $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!(true)] $($rest)*)
-    };
-
-    // Next element is `false`.
-    (@arrayser $seed:ident [$($elems:expr,)*] false $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!(false)] $($rest)*)
-    };
-
-    // Next element is an array.
-    (@arrayser $seed:ident [$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!([$($array)*])] $($rest)*)
-    };
-
-    // Next element is a map.
-    (@arrayser $seed:ident [$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!({$($map)*})] $($rest)*)
-    };
-
-    // Next element is an expression followed by comma.
-    (@arrayser $seed:ident [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!($next),] $($rest)*)
-    };
-
-    // Last element is an expression with no trailing comma.
-    (@arrayser $seed:ident [$($elems:expr,)*] $last:expr) => {
-        json_internal!(@arrayser $seed [$($elems,)* json_internal!($last)])
-    };
-
-    // Comma after the most recent element.
-    (@arrayser $seed:ident [$($elems:expr),*] , $($rest:tt)*) => {
-        json_internal!(@arrayser $seed [$($elems,)*] $($rest)*)
-    };
-
-    // Unexpected token after most recent element.
-    (@arrayser $seed:ident [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
-        json_unexpected!($unexpected)
-    };
     //////////////////////////////////////////////////////////////////////////
     // TT muncher for parsing the inside of an object {...}. Each entry is
     // inserted into the given map variable.
@@ -466,58 +406,11 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::EmptyList
+        $crate::List(())
     };
 
     ([ $($tt:tt)+ ]) => {{
-
-        #[derive(Copy, Clone)]
-        struct List;
-        struct ListState(usize);
-
-        impl<'de> serde::de::Deserializer<'de> for List {
-            type Error = serde::de::value::Error;
-
-            fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-            where
-                V: serde::de::Visitor<'de>,
-            {
-                visitor.visit_seq(ListState(0))
-            }
-
-            serde::forward_to_deserialize_any! {
-                bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-                bytes byte_buf option unit unit_struct newtype_struct seq tuple
-                tuple_struct map struct enum identifier ignored_any
-            }
-        }
-
-        impl<'de> serde::de::SeqAccess<'de> for ListState {
-            type Error = serde::de::value::Error;
-
-            fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
-            where
-                T: serde::de::DeserializeSeed<'de>,
-            {
-                let n = self.0;
-                let res = json_internal!(@array seed n [] $($tt)+);
-                self.0 += 1;
-                Ok(Some(res))
-            }
-        }
-
-        impl serde::ser::Serialize for List {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                let mut seq = serializer.serialize_seq(Some(json_internal_length!(@array [] $($tt)+)))?;
-                json_internal!(@arrayser seq [] $($tt)+);
-                serde::ser::SerializeSeq::end(seq)
-            }
-        }
-
-        List
+        $crate::List(json_internal!(@array [] $($tt)+))
     }};
 
     ({}) => {
@@ -596,19 +489,14 @@ macro_rules! json_internal {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
-    ($seed:ident $n:ident ($i:expr) $first:expr $(, $rest:expr)*) => {
-        if $n == $i {
-            $seed.deserialize($first)?
-        } else {
-            json_internal_vec!($seed $n ($i + 1) $($rest),*)
+    ($first:expr $(, $rest:expr)*) => {
+        $crate::List1 {
+            first: ::core::option::Option::Some($first),
+            second:  json_internal_vec!($($rest),*),
         }
     };
-    ($seed:ident $n:ident ($i:expr)) => {
-        if $n == $i {
-            return Ok(None);
-        } else {
-            return Err(<serde::de::value::Error as serde::de::Error>::custom("foobar"))
-        }
+    () => {
+        ()
     };
 }
 
