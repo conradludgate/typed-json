@@ -1,10 +1,10 @@
 [package]
 name = "typed-json"
-version = "0.1.0-rc.0"
+version = "0.1.0-rc.1"
 authors = ["Conrad Ludgate <conradludgate@gmail.com>"]
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
-documentation = "https://docs.rs/serde_json"
+documentation = "https://docs.rs/typed-json"
 edition = "2021"
 keywords = ["json", "serde", "serialization"]
 license = "MIT OR Apache-2.0"

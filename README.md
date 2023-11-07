@@ -6,7 +6,7 @@
 Typed JSON provides a `json!` macro to build an `impl serde::Serialize`
 objects with very natural JSON syntax.
 
-```
+```rust
 use typed_json::json;
 
 // The type of `john` is `impl serde::Serialize`
@@ -28,7 +28,7 @@ be interpolated directly into the JSON value as you are building it. Serde
 will check at compile time that the value you are interpolating is able to
 be represented as JSON.
 
-```
+```rust
 let full_name = "John Doe";
 let age_last_year = 42;
 
