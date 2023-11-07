@@ -5,11 +5,16 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["std"]
+std = ["serde/std"]
+# alloc = ["serde/alloc"]
+
 [dependencies]
-serde = "1"
+serde = { version = "1.0.166", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1.0.166", features = ["derive"] }
 serde_test = "1.0.176"
 serde_json = "1"
 divan = "0.1"
@@ -17,3 +22,6 @@ divan = "0.1"
 [[bench]]
 harness = false
 name = "serialize_string"
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]

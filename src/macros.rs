@@ -1,6 +1,61 @@
+/// Construct an [`impl serde::Serialize`](serde::Serialize) from a JSON literal.
+///
+/// ```
+/// # use typed_json::json;
+/// #
+/// let value = json!({
+///     "code": 200,
+///     "success": true,
+///     "payload": {
+///         "features": [
+///             "serde",
+///             "json"
+///         ],
+///         "homepage": null
+///     }
+/// });
+/// ```
+///
+/// Variables or expressions can be interpolated into the JSON literal. Any type
+/// interpolated into an array element or object value must implement Serde's
+/// `Serialize` trait, while any type interpolated into a object key must
+/// implement `Into<String>`. If the `Serialize` implementation of the
+/// interpolated type decides to fail, or if the interpolated type contains a
+/// map with non-string keys, the `json!` macro will panic.
+///
+/// ```
+/// # use typed_json::json;
+/// #
+/// let code = 200;
+/// let features = vec!["typed", "json"];
+///
+/// let value = json!({
+///     "code": code,
+///     "success": code == 200,
+///     "payload": {
+///         features[0]: features[1]
+///     }
+/// });
+/// ```
+///
+/// Trailing commas are allowed inside both arrays and objects.
+///
+/// ```
+/// # use typed_json::json;
+/// #
+/// let value = json!([
+///     "notice",
+///     "the",
+///     "trailing",
+///     "comma -->",
+/// ]);
+/// ```
 #[macro_export(local_inner_macros)]
 macro_rules! json {
-    ( $($tt:tt)* ) => { json_internal!($($tt)*) };
+    // Hide distracting implementation details from the generated rustdoc.
+    ($($json:tt)+) => {
+        $crate::serialize(json_internal!($($json)+))
+    };
 }
 
 #[macro_export(local_inner_macros)]
@@ -225,7 +280,7 @@ macro_rules! json_internal {
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
-    ($first:expr $(, $rest:expr)*) => {
+    ($first:expr $(, $rest:expr)* $(,)?) => {
         $crate::List1 {
             first: ::core::option::Option::Some($first),
             second:  json_internal_vec!($($rest),*),

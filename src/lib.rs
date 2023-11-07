@@ -1,10 +1,92 @@
+//! # Typed JSON
+//!
+//! Typed JSON provides a [`json!` macro][crate::json] to build an [`impl serde::Serialize`](serde::Serialize)
+//! objects with very natural JSON syntax.
+//!
+//! ```
+//! use typed_json::json;
+//!
+//! // The type of `john` is `impl serde::Serialize`
+//! let john = json!({
+//!     "name": "John Doe",
+//!     "age": 43,
+//!     "phones": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!     ]
+//! });
+//!
+//! // Convert to a string of JSON and print it out
+//! println!("{}", serde_json::to_string(&john).unwrap());
+//! ```
+//!
+//! One neat thing about the `json!` macro is that variables and expressions can
+//! be interpolated directly into the JSON value as you are building it. Serde
+//! will check at compile time that the value you are interpolating is able to
+//! be represented as JSON.
+//!
+//! ```
+//! # use typed_json::json;
+//! #
+//! # fn random_phone() -> u16 { 0 }
+//! #
+//! let full_name = "John Doe";
+//! let age_last_year = 42;
+//!
+//! // The type of `john` is `impl serde::Serialize`
+//! let john = json!({
+//!     "name": full_name,
+//!     "age": age_last_year + 1,
+//!     "phones": [
+//!         format!("+44 {}", random_phone())
+//!     ]
+//! });
+//! ```
+//!
+//! This is amazingly convenient, but we have the problem we had before with
+//! `Value`: the IDE and Rust compiler cannot help us if we get it wrong. Serde
+//! JSON provides a better way of serializing strongly-typed data structures
+//! into JSON text.
+//!
+//! # No-std support
+//!
+//! It is possible to use typed_json with only `core`. Disable the default "std"
+//! feature:
+//!
+//! ```toml
+//! [dependencies]
+//! typed_json = { version = "0.1", default-features = false }
+//! ```
+//!
+//! To encode the `Serialize`` type to JSON:
+//!
+//! you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc`` feature
+//! ```toml
+//! [dependencies]
+//! serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+//! ```
+//!
+//! or [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/index.html) with no dependency on `alloc`
+//! ```toml
+//! [dependencies]
+//! serde-json-core = "0.5.1"
+//! ```
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use serde::de::*;
 use serde::forward_to_deserialize_any;
 
 #[macro_use]
 mod macros;
 
-// -- library code --
+#[doc(hidden)]
+pub fn serialize<
+    T: serde::Serialize + for<'de> serde::Deserializer<'de, Error = serde::de::value::Error>,
+>(
+    t: T,
+) -> T {
+    t
+}
 
 #[derive(Clone, Copy)]
 #[doc(hidden)]
@@ -43,6 +125,7 @@ impl<'de> Deserializer<'de> for Expr<&str> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'de> Deserializer<'de> for Expr<String> {
     type Error = serde::de::value::Error;
 
@@ -60,30 +143,12 @@ impl<'de> Deserializer<'de> for Expr<String> {
     }
 }
 
-impl serde::ser::Serialize for Expr<i64> {
+impl<S1: serde::ser::Serialize> serde::ser::Serialize for Expr<S1> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_i64(self.0)
-    }
-}
-
-impl serde::ser::Serialize for Expr<&str> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.0)
-    }
-}
-
-impl serde::ser::Serialize for Expr<String> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.0)
+        self.0.serialize(serializer)
     }
 }
 
@@ -131,15 +196,6 @@ impl<'de> serde::de::Deserializer<'de> for Expr<bool> {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-impl serde::ser::Serialize for Expr<bool> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_bool(self.0)
     }
 }
 
@@ -244,7 +300,7 @@ impl<'de> KeyValuePair<'de> for () {
     }
 }
 
-pub trait KeyValuePair<'de> {
+trait KeyValuePair<'de> {
     fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
     where
         K: DeserializeSeed<'de>;
@@ -364,7 +420,7 @@ impl<'de> Item<'de> for () {
     }
 }
 
-pub trait Item<'de> {
+trait Item<'de> {
     fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
     where
         V: DeserializeSeed<'de>;
@@ -414,8 +470,6 @@ impl<T: for<'de> Item<'de>> serde::ser::Serialize for List<T> {
         serde::ser::SerializeSeq::end(seq)
     }
 }
-
-// -- user code --
 
 #[cfg(test)]
 mod tests {
