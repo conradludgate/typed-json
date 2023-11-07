@@ -373,16 +373,136 @@ impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
     }
 }
 
+impl<'de, T> Item<'de> for Option<T>
+where
+    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+{
+    fn value_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        let Some(value) = self.take() else {
+            return Ok(None);
+        };
+        seed.deserialize(value).map(Some)
+    }
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeSeq,
+    {
+        match self {
+            Some(v) => {
+                serde::ser::SerializeSeq::serialize_element(seq, &v)?;
+                Ok(())
+            }
+            _ => Err(<S::Error as serde::ser::Error>::custom("foobar")),
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+#[doc(hidden)]
+pub struct List1<T, U> {
+    state: bool,
+    first: T,
+    second: U,
+}
+
+impl<'de, T, U> Item<'de> for List1<T, U>
+where
+    T: Item<'de>,
+    U: Item<'de>,
+{
+    fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        if self.state {
+            self.state = false;
+            self.first.value_seed(seed)
+        } else {
+            self.second.value_seed(seed)
+        }
+    }
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeSeq,
+    {
+        self.first.serialize(seq)?;
+        self.second.serialize(seq)?;
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        self.first.len() + self.second.len()
+    }
+}
+
+pub trait Item<'de> {
+    fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>;
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeSeq;
+    fn len(&self) -> usize;
+}
+
+#[derive(Copy, Clone)]
+struct List<T>(T);
+
+struct ListState<T>(T);
+
+impl<'de, T: Item<'de>> serde::de::Deserializer<'de> for List<T> {
+    type Error = serde::de::value::Error;
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_seq(ListState(self.0))
+    }
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+impl<'de, K: Item<'de>> serde::de::SeqAccess<'de> for ListState<K> {
+    type Error = serde::de::value::Error;
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        self.0.value_seed(seed)
+    }
+}
+impl<T: for<'de> Item<'de>> serde::ser::Serialize for List<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        self.0.serialize(&mut seq)?;
+        serde::ser::SerializeSeq::end(seq)
+    }
+}
+
 // -- user code --
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use serde::Deserialize;
     use serde_test::Token;
 
-    use crate::{KVList, Lit, Map, KV};
+    use crate::{KVList, List, List1, Lit, Map, KV};
 
     #[derive(Debug, Deserialize)]
     struct Something {
@@ -390,7 +510,7 @@ mod tests {
     }
 
     #[test]
-    fn arbitrary() {
+    fn arbitrary_map() {
         let data = Map(KVList {
             state: true,
             first: KV::Pair(Lit("foo"), Lit(1)),
@@ -414,6 +534,31 @@ mod tests {
             ],
         );
         let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
+        dbg!(y);
+    }
+
+    #[test]
+    fn arbitrary_seq() {
+        let data = List(List1 {
+            state: true,
+            first: Some(Lit("foo")),
+            second: List1 {
+                state: true,
+                first: Some(Lit("bar")),
+                second: Some(Lit("baz")),
+            },
+        });
+        serde_test::assert_ser_tokens(
+            &data,
+            &[
+                Token::Seq { len: Some(3) },
+                Token::Str("foo"),
+                Token::Str("bar"),
+                Token::Str("baz"),
+                Token::SeqEnd,
+            ],
+        );
+        let y = <BTreeSet<&'static str>>::deserialize(data).unwrap();
         dbg!(y);
     }
 
