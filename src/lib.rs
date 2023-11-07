@@ -209,39 +209,52 @@ impl serde::ser::Serialize for Bool {
 pub enum KV<T, U> {
     Pair(T, U),
     V(U),
-    Empty,
 }
 
-impl<'de, T, U> KeyValuePair<'de> for KV<T, U>
+#[doc(hidden)]
+pub struct KVList<T, U, V> {
+    first: Option<KV<T, U>>,
+    second: V,
+}
+
+impl<'de, T, U, V> KeyValuePair<'de> for KVList<T, U, V>
 where
     T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
     U: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+    V: KeyValuePair<'de>,
 {
     fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
     where
         K: DeserializeSeed<'de>,
     {
-        match std::mem::replace(self, KV::Empty) {
-            KV::Pair(k, v) => {
-                *self = KV::V(v);
-                seed.deserialize(k).map(Some)
+        if let Some(t) = self.first.take() {
+            match t {
+                KV::Pair(k, v) => {
+                    self.first = Some(KV::V(v));
+                    seed.deserialize(k).map(Some)
+                }
+                KV::V(_) => Err(<serde::de::value::Error as serde::de::Error>::custom(
+                    "foobar",
+                )),
             }
-            KV::Empty => Ok(None),
-            _ => Err(<serde::de::value::Error as serde::de::Error>::custom(
-                "foobar",
-            )),
+        } else {
+            self.second.key_seed(seed)
         }
     }
 
-    fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
+    fn value_seed<W>(&mut self, seed: W) -> Result<W::Value, serde::de::value::Error>
     where
-        V: DeserializeSeed<'de>,
+        W: DeserializeSeed<'de>,
     {
-        match std::mem::replace(self, KV::Empty) {
-            KV::V(v) => seed.deserialize(v),
-            _ => Err(<serde::de::value::Error as serde::de::Error>::custom(
-                "foobar",
-            )),
+        if let Some(t) = self.first.take() {
+            match t {
+                KV::V(v) => seed.deserialize(v),
+                KV::Pair(..) => Err(<serde::de::value::Error as serde::de::Error>::custom(
+                    "foobar",
+                )),
+            }
+        } else {
+            self.second.value_seed(seed)
         }
     }
 
@@ -249,18 +262,16 @@ where
     where
         S: serde::ser::SerializeMap,
     {
-        match self {
-            KV::Pair(k, v) => {
-                serde::ser::SerializeMap::serialize_key(seq, &k)?;
-                serde::ser::SerializeMap::serialize_value(seq, &v)?;
-                Ok(())
-            }
-            _ => Err(<S::Error as serde::ser::Error>::custom("foobar")),
+        if let Some(KV::Pair(k, v)) = &self.first {
+            seq.serialize_key(k)?;
+            seq.serialize_value(v)?;
         }
+        self.second.serialize(seq)?;
+        Ok(())
     }
 
     fn len(&self) -> usize {
-        1
+        1 + self.second.len()
     }
 }
 
@@ -290,75 +301,6 @@ impl<'de> KeyValuePair<'de> for () {
 
     fn len(&self) -> usize {
         0
-    }
-}
-
-impl<'de> Item<'de> for () {
-    fn value_seed<V>(&mut self, _seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
-    where
-        V: DeserializeSeed<'de>,
-    {
-        Ok(None)
-    }
-
-    fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
-    where
-        S: serde::ser::SerializeSeq,
-    {
-        Ok(())
-    }
-
-    fn len(&self) -> usize {
-        0
-    }
-}
-
-#[doc(hidden)]
-pub struct KVList<T, U> {
-    state: bool,
-    first: T,
-    second: U,
-}
-
-impl<'de, T, U> KeyValuePair<'de> for KVList<T, U>
-where
-    T: KeyValuePair<'de>,
-    U: KeyValuePair<'de>,
-{
-    fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
-    where
-        K: DeserializeSeed<'de>,
-    {
-        if self.state {
-            self.first.key_seed(seed)
-        } else {
-            self.second.key_seed(seed)
-        }
-    }
-
-    fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
-    where
-        V: DeserializeSeed<'de>,
-    {
-        if self.state {
-            self.state = false;
-            self.first.value_seed(seed)
-        } else {
-            self.second.value_seed(seed)
-        }
-    }
-
-    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
-    where
-        S: serde::ser::SerializeMap,
-    {
-        self.first.serialize(seq)?;
-        self.second.serialize(seq)?;
-        Ok(())
-    }
-
-    fn len(&self) -> usize {
-        self.first.len() + self.second.len()
     }
 }
 
@@ -422,38 +364,6 @@ impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
     }
 }
 
-impl<'de, T> Item<'de> for Option<T>
-where
-    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
-{
-    fn value_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
-    where
-        K: DeserializeSeed<'de>,
-    {
-        let Some(value) = self.take() else {
-            return Ok(None);
-        };
-        seed.deserialize(value).map(Some)
-    }
-
-    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
-    where
-        S: serde::ser::SerializeSeq,
-    {
-        match self {
-            Some(v) => {
-                serde::ser::SerializeSeq::serialize_element(seq, &v)?;
-                Ok(())
-            }
-            _ => Err(<S::Error as serde::ser::Error>::custom("foobar")),
-        }
-    }
-
-    fn len(&self) -> usize {
-        1
-    }
-}
-
 #[doc(hidden)]
 pub struct List1<T, U> {
     first: Option<T>,
@@ -489,6 +399,26 @@ where
 
     fn len(&self) -> usize {
         1 + self.second.len()
+    }
+}
+
+impl<'de> Item<'de> for () {
+    fn value_seed<V>(&mut self, _seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeSeq,
+    {
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        0
     }
 }
 
@@ -561,12 +491,13 @@ mod tests {
     #[test]
     fn arbitrary_map() {
         let data = Map(KVList {
-            state: true,
-            first: KV::Pair(Lit("foo"), Lit(1)),
+            first: Some(KV::Pair(Lit("foo"), Lit(1))),
             second: KVList {
-                state: true,
-                first: KV::Pair(Lit("bar"), Lit(2)),
-                second: KV::Pair(Lit("baz"), Lit(3)),
+                first: Some(KV::Pair(Lit("bar"), Lit(2))),
+                second: KVList {
+                    first: Some(KV::Pair(Lit("baz"), Lit(3))),
+                    second: (),
+                },
             },
         });
         serde_test::assert_ser_tokens(
