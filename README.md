@@ -42,10 +42,24 @@ let john = json!({
 });
 ```
 
-This is amazingly convenient, but we have the problem we had before with
-`Value`: the IDE and Rust compiler cannot help us if we get it wrong. Serde
-JSON provides a better way of serializing strongly-typed data structures
-into JSON text.
+# Comparison to `serde_json`
+
+This crate provides a typed version of `serde_json::json!()`. What does that mean? It means it performs 0 allocations and it creates
+a custom type for the JSON object you are representing. For one-off JSON documents, this ends up being considerably faster to encode.
+This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0.108"`.
+
+## Benchmark
+
+The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
+the `typed_json_core` benchmark uses `serde-json-core` to encode to a `heapless::String`.
+
+```
+Timer precision: 41 ns
+serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
+├─ serde_json       707 ns        │ 36.62 µs      │ 791 ns        │ 1.096 µs      │ 10000   │ 10000
+├─ typed_json       154 ns        │ 844.1 ns      │ 163.1 ns      │ 163.5 ns      │ 10000   │ 320000
+╰─ typed_json_core  215.2 ns      │ 742.5 ns      │ 229.5 ns      │ 229.7 ns      │ 10000   │ 320000
+```
 
 # No-std support
 
@@ -69,23 +83,4 @@ or [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/in
 ```toml
 [dependencies]
 serde-json-core = "0.5.1"
-```
-
-# Comparison to `serde_json`
-
-This crate provides a typed version of `serde_json::json!()`. What does that mean? It means it performs 0 allocations and it creates
-a custom type for the JSON object you are representing. For one-off JSON documents, this ends up being considerably faster to encode.
-This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0.108"`.
-
-## Benchmark
-
-The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
-the `typed_json_core` benchmark uses `serde-json-core` to encode to a `heapless::String`.
-
-```
-Timer precision: 41 ns
-serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
-├─ serde_json       707 ns        │ 36.62 µs      │ 791 ns        │ 1.096 µs      │ 10000   │ 10000
-├─ typed_json       154 ns        │ 844.1 ns      │ 163.1 ns      │ 163.5 ns      │ 10000   │ 320000
-╰─ typed_json_core  215.2 ns      │ 742.5 ns      │ 229.5 ns      │ 229.7 ns      │ 10000   │ 320000
 ```
