@@ -264,6 +264,55 @@ where
     }
 }
 
+impl<'de> KeyValuePair<'de> for () {
+    fn key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn value_seed<V>(&mut self, _seed: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        Err(<serde::de::value::Error as serde::de::Error>::custom(
+            "foobar",
+        ))
+    }
+
+    fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeMap,
+    {
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        0
+    }
+}
+
+impl<'de> Item<'de> for () {
+    fn value_seed<V>(&mut self, _seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeSeq,
+    {
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        0
+    }
+}
+
 #[doc(hidden)]
 pub struct KVList<T, U> {
     state: bool,
@@ -407,23 +456,21 @@ where
 
 #[doc(hidden)]
 pub struct List1<T, U> {
-    state: bool,
-    first: T,
+    first: Option<T>,
     second: U,
 }
 
 impl<'de, T, U> Item<'de> for List1<T, U>
 where
-    T: Item<'de>,
+    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
     U: Item<'de>,
 {
     fn value_seed<V>(&mut self, seed: V) -> Result<Option<V::Value>, serde::de::value::Error>
     where
         V: DeserializeSeed<'de>,
     {
-        if self.state {
-            self.state = false;
-            self.first.value_seed(seed)
+        if let Some(t) = self.first.take() {
+            seed.deserialize(t).map(Some)
         } else {
             self.second.value_seed(seed)
         }
@@ -433,13 +480,15 @@ where
     where
         S: serde::ser::SerializeSeq,
     {
-        self.first.serialize(seq)?;
+        if let Some(t) = &self.first {
+            seq.serialize_element(t)?;
+        }
         self.second.serialize(seq)?;
         Ok(())
     }
 
     fn len(&self) -> usize {
-        self.first.len() + self.second.len()
+        1 + self.second.len()
     }
 }
 
@@ -540,12 +589,13 @@ mod tests {
     #[test]
     fn arbitrary_seq() {
         let data = List(List1 {
-            state: true,
             first: Some(Lit("foo")),
             second: List1 {
-                state: true,
                 first: Some(Lit("bar")),
-                second: Some(Lit("baz")),
+                second: List1 {
+                    first: Some(Lit("baz")),
+                    second: (),
+                },
             },
         });
         serde_test::assert_ser_tokens(
