@@ -205,6 +205,174 @@ impl serde::ser::Serialize for Bool {
     }
 }
 
+#[doc(hidden)]
+pub enum KV<T, U> {
+    Pair(T, U),
+    V(U),
+    Empty,
+}
+
+impl<'de, T, U> KeyValuePair<'de> for KV<T, U>
+where
+    T: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+    U: serde::ser::Serialize + serde::de::Deserializer<'de, Error = serde::de::value::Error>,
+{
+    fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        match std::mem::replace(self, KV::Empty) {
+            KV::Pair(k, v) => {
+                *self = KV::V(v);
+                seed.deserialize(k).map(Some)
+            }
+            KV::Empty => Ok(None),
+            _ => Err(<serde::de::value::Error as serde::de::Error>::custom(
+                "foobar",
+            )),
+        }
+    }
+
+    fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        match std::mem::replace(self, KV::Empty) {
+            KV::V(v) => seed.deserialize(v),
+            _ => Err(<serde::de::value::Error as serde::de::Error>::custom(
+                "foobar",
+            )),
+        }
+    }
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeMap,
+    {
+        match self {
+            KV::Pair(k, v) => {
+                serde::ser::SerializeMap::serialize_key(seq, &k)?;
+                serde::ser::SerializeMap::serialize_value(seq, &v)?;
+                Ok(())
+            }
+            _ => Err(<S::Error as serde::ser::Error>::custom("foobar")),
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+}
+
+#[doc(hidden)]
+pub struct KVList<T, U> {
+    state: bool,
+    first: T,
+    second: U,
+}
+
+impl<'de, T, U> KeyValuePair<'de> for KVList<T, U>
+where
+    T: KeyValuePair<'de>,
+    U: KeyValuePair<'de>,
+{
+    fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        if self.state {
+            self.first.key_seed(seed)
+        } else {
+            self.second.key_seed(seed)
+        }
+    }
+
+    fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        if self.state {
+            self.state = false;
+            self.first.value_seed(seed)
+        } else {
+            self.second.value_seed(seed)
+        }
+    }
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeMap,
+    {
+        self.first.serialize(seq)?;
+        self.second.serialize(seq)?;
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        self.first.len() + self.second.len()
+    }
+}
+
+pub trait KeyValuePair<'de> {
+    fn key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, serde::de::value::Error>
+    where
+        K: DeserializeSeed<'de>;
+
+    fn value_seed<V>(&mut self, seed: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: DeserializeSeed<'de>;
+
+    fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
+    where
+        S: serde::ser::SerializeMap;
+    fn len(&self) -> usize;
+}
+
+#[derive(Copy, Clone)]
+struct Map<T>(T);
+
+struct MapState<T>(T);
+
+impl<'de, T: KeyValuePair<'de>> serde::de::Deserializer<'de> for Map<T> {
+    type Error = serde::de::value::Error;
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_map(MapState(self.0))
+    }
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+impl<'de, T: KeyValuePair<'de>> serde::de::MapAccess<'de> for MapState<T> {
+    type Error = serde::de::value::Error;
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
+    where
+        K: serde::de::DeserializeSeed<'de>,
+    {
+        self.0.key_seed(seed)
+    }
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::DeserializeSeed<'de>,
+    {
+        self.0.value_seed(seed)
+    }
+}
+impl<T: for<'de> KeyValuePair<'de>> serde::ser::Serialize for Map<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_map(Some(self.0.len()))?;
+        self.0.serialize(&mut seq)?;
+        serde::ser::SerializeMap::end(seq)
+    }
+}
+
 // -- user code --
 
 #[cfg(test)]
@@ -214,9 +382,39 @@ mod tests {
     use serde::Deserialize;
     use serde_test::Token;
 
+    use crate::{KVList, Lit, Map, KV};
+
     #[derive(Debug, Deserialize)]
     struct Something {
         foo: i32,
+    }
+
+    #[test]
+    fn arbitrary() {
+        let data = Map(KVList {
+            state: true,
+            first: KV::Pair(Lit("foo"), Lit(1)),
+            second: KVList {
+                state: true,
+                first: KV::Pair(Lit("bar"), Lit(2)),
+                second: KV::Pair(Lit("baz"), Lit(3)),
+            },
+        });
+        serde_test::assert_ser_tokens(
+            &data,
+            &[
+                Token::Map { len: Some(3) },
+                Token::Str("foo"),
+                Token::I64(1),
+                Token::Str("bar"),
+                Token::I64(2),
+                Token::Str("baz"),
+                Token::I64(3),
+                Token::MapEnd,
+            ],
+        );
+        let y = <BTreeMap<&'static str, i32>>::deserialize(data).unwrap();
+        dbg!(y);
     }
 
     #[test]
