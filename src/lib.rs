@@ -45,16 +45,16 @@
 //!
 //! # Comparison to `serde_json`
 //!
-//! This crate provides a typed version of `serde_json::json!()`[serde_json::json]. What does that mean? It means it performs 0 allocations and it creates
+//! This crate provides a typed version of [`serde_json::json!()`](https://docs.rs/serde_json/1.0.108/serde_json/macro.json.html). What does that mean? It means it performs 0 allocations and it creates
 //! a custom type for the JSON object you are representing. For one-off JSON documents, this ends up being considerably faster to encode.
 //! This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0.108"`.
 //!
 //! ## Benchmark
 //!
 //! The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
-//! the `typed_json_core` benchmark uses `serde-json-core` to encode to a [`heapless::String`](serde_json_core::heapless::String).
+//! the `typed_json_core` benchmark uses `serde-json-core` to encode to a [`heapless::String`](https://docs.rs/heapless/0.7.16/heapless/index.html).
 //!
-//! ```
+//! ```text
 //! Timer precision: 41 ns
 //! serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
 //! ├─ serde_json       707 ns        │ 36.62 µs      │ 791 ns        │ 1.096 µs      │ 10000   │ 10000
