@@ -1,9 +1,9 @@
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! json {
     ( $($tt:tt)* ) => { json_internal!($($tt)*) };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,6 @@ macro_rules! json_internal {
         json_internal!(@object ($($key)* $tt) ($($rest)*) ($($rest)*))
     };
 
-
     //////////////////////////////////////////////////////////////////////////
     // The main implementation.
     //
@@ -190,40 +189,40 @@ macro_rules! json_internal {
     };
 
     (true) => {
-        $crate::Bool(true)
+        $crate::Expr(true)
     };
 
     (false) => {
-        $crate::Bool(false)
+        $crate::Expr(false)
     };
 
     ([]) => {
         $crate::List(())
     };
 
-    ([ $($tt:tt)+ ]) => {{
+    ([ $($tt:tt)+ ]) => {
         $crate::List(json_internal!(@array [] $($tt)+))
-    }};
+    };
 
     ({}) => {
         $crate::Map(())
     };
 
-    ({ $($tt:tt)+ }) => {{
+    ({ $($tt:tt)+ }) => {
         $crate::Map(json_internal!(@object () ($($tt)+) ($($tt)+)))
-    }};
+    };
 
     // Any Serialize type: numbers, strings, struct literals, variables etc.
     // Must be below every other rule.
     ($other:expr) => {
-        $crate::Lit($other)
+        $crate::Expr($other)
     };
 }
 
 // The json_internal macro above cannot invoke vec directly because it uses
 // local_inner_macros. A vec invocation there would resolve to $crate::vec.
 // Instead invoke vec here outside of local_inner_macros.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
     ($first:expr $(, $rest:expr)*) => {

@@ -7,8 +7,9 @@ mod macros;
 // -- library code --
 
 #[derive(Clone, Copy)]
-struct Lit<T>(T);
-impl<'de> Deserializer<'de> for Lit<i64> {
+#[doc(hidden)]
+pub struct Expr<T>(pub T);
+impl<'de> Deserializer<'de> for Expr<i64> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -25,7 +26,7 @@ impl<'de> Deserializer<'de> for Lit<i64> {
     }
 }
 
-impl<'de> Deserializer<'de> for Lit<&str> {
+impl<'de> Deserializer<'de> for Expr<&str> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -42,7 +43,24 @@ impl<'de> Deserializer<'de> for Lit<&str> {
     }
 }
 
-impl serde::ser::Serialize for Lit<i64> {
+impl<'de> Deserializer<'de> for Expr<String> {
+    type Error = serde::de::value::Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_string(self.0)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+impl serde::ser::Serialize for Expr<i64> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -51,7 +69,7 @@ impl serde::ser::Serialize for Lit<i64> {
     }
 }
 
-impl serde::ser::Serialize for Lit<&str> {
+impl serde::ser::Serialize for Expr<&str> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -60,8 +78,18 @@ impl serde::ser::Serialize for Lit<&str> {
     }
 }
 
+impl serde::ser::Serialize for Expr<String> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.0)
+    }
+}
+
 #[derive(Clone, Copy)]
-struct Null;
+#[doc(hidden)]
+pub struct Null;
 
 impl<'de> serde::de::Deserializer<'de> for Null {
     type Error = serde::de::value::Error;
@@ -89,10 +117,7 @@ impl serde::ser::Serialize for Null {
     }
 }
 
-#[derive(Clone, Copy)]
-struct Bool(bool);
-
-impl<'de> serde::de::Deserializer<'de> for Bool {
+impl<'de> serde::de::Deserializer<'de> for Expr<bool> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -109,7 +134,7 @@ impl<'de> serde::de::Deserializer<'de> for Bool {
     }
 }
 
-impl serde::ser::Serialize for Bool {
+impl serde::ser::Serialize for Expr<bool> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -235,7 +260,8 @@ pub trait KeyValuePair<'de> {
 }
 
 #[derive(Copy, Clone)]
-struct Map<T>(T);
+#[doc(hidden)]
+pub struct Map<T>(pub T);
 
 struct MapState<T>(T);
 
@@ -350,7 +376,8 @@ pub trait Item<'de> {
 }
 
 #[derive(Copy, Clone)]
-struct List<T>(T);
+#[doc(hidden)]
+pub struct List<T>(pub T);
 
 struct ListState<T>(T);
 
@@ -392,71 +419,14 @@ impl<T: for<'de> Item<'de>> serde::ser::Serialize for List<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeMap;
 
     use serde::Deserialize;
     use serde_test::Token;
 
-    use crate::{KVList, List, List1, Lit, Map, KV};
-
     #[derive(Debug, Deserialize)]
     struct Something {
         foo: i32,
-    }
-
-    #[test]
-    fn arbitrary_map() {
-        let data = Map(KVList {
-            first: Some(KV::Pair(Lit("foo"), Lit(1))),
-            second: KVList {
-                first: Some(KV::Pair(Lit("bar"), Lit(2))),
-                second: KVList {
-                    first: Some(KV::Pair(Lit("baz"), Lit(3))),
-                    second: (),
-                },
-            },
-        });
-        serde_test::assert_ser_tokens(
-            &data,
-            &[
-                Token::Map { len: Some(3) },
-                Token::Str("foo"),
-                Token::I64(1),
-                Token::Str("bar"),
-                Token::I64(2),
-                Token::Str("baz"),
-                Token::I64(3),
-                Token::MapEnd,
-            ],
-        );
-        let y = <BTreeMap<String, i32>>::deserialize(data).unwrap();
-        dbg!(y);
-    }
-
-    #[test]
-    fn arbitrary_seq() {
-        let data = List(List1 {
-            first: Some(Lit("foo")),
-            second: List1 {
-                first: Some(Lit("bar")),
-                second: List1 {
-                    first: Some(Lit("baz")),
-                    second: (),
-                },
-            },
-        });
-        serde_test::assert_ser_tokens(
-            &data,
-            &[
-                Token::Seq { len: Some(3) },
-                Token::Str("foo"),
-                Token::Str("bar"),
-                Token::Str("baz"),
-                Token::SeqEnd,
-            ],
-        );
-        let y = <BTreeSet<String>>::deserialize(data).unwrap();
-        dbg!(y);
     }
 
     #[test]
@@ -499,6 +469,33 @@ mod tests {
                 Token::I64(123),
                 Token::I64(456),
                 Token::SeqEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn complex_ser() {
+        let value1 = 123;
+        let value2 = 456;
+        let value3 = format!("hello {}", "world");
+
+        let data = json!({
+            "codes": [value1, value2],
+            "message": value3
+        });
+
+        serde_test::assert_ser_tokens(
+            &data,
+            &[
+                Token::Map { len: Some(2) },
+                Token::Str("codes"),
+                Token::Seq { len: Some(2) },
+                Token::I64(123),
+                Token::I64(456),
+                Token::SeqEnd,
+                Token::Str("message"),
+                Token::Str("hello world"),
+                Token::MapEnd,
             ],
         );
     }
