@@ -139,7 +139,10 @@ macro_rules! json_internal {
     // Insert the current entry.
     (@object [$($key:tt)+] ($value:expr) $(, $($rest:tt)*)? ) => {
         $crate::KVList {
-            first: ::core::option::Option::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
+            first: ::core::option::Option::Some($crate::KV::Pair(
+                $crate::ඞ::zst_expr!(json_internal!($($key)*)),
+                $crate::ඞ::zst_expr!($value),
+            )),
             second: json_internal!(@object () ( $($($rest)*)? ) ( $($($rest)*)? )),
         }
     };

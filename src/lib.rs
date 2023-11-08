@@ -205,6 +205,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(
+    feature = "specialization",
+    allow(incomplete_features),
+    feature(specialization)
+)]
 
 #[macro_use]
 mod macros;
@@ -212,6 +217,11 @@ mod expr_de;
 
 #[cfg(feature = "std")]
 mod fmt;
+
+#[path = "zst_expr.rs"]
+#[doc(hidden)]
+/// Not part of the public API
+pub mod ඞ;
 
 /// A clone of [`serde::de::Deserializer`] to get around the orphan rule
 pub trait Deserializer<'de>: Sized {
@@ -600,9 +610,10 @@ mod tests {
 
     #[test]
     fn object() {
-        let data = json!({"foo": 123});
-        let x = Something::deserialize(data).unwrap();
-        let y = <BTreeMap<String, i32>>::deserialize(data).unwrap();
+        // FIXME: `zst_expr()` breaks `Copy`.
+        let data = || json!({"foo": 123});
+        let x = Something::deserialize(data()).unwrap();
+        let y = <BTreeMap<String, i32>>::deserialize(data()).unwrap();
         assert_eq!(x.foo, 123);
         assert_eq!(y["foo"], 123);
     }
