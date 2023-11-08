@@ -17,7 +17,7 @@ std = ["serde/std", "serde_json", "serde_json?/std"]
 
 [dependencies]
 serde = { version = "1.0.166", default-features = false }
-serde_json = { version = "1.0.108", default-features = false, optional=true }
+serde_json = { version = "1.0.96", default-features = false, optional=true }
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }

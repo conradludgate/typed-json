@@ -213,6 +213,15 @@ mod expr_de;
 #[cfg(feature = "std")]
 mod fmt;
 
+/// A clone of [`serde::de::Deserializer`] to get around the orphan rule
+pub trait Deserializer<'de>: Sized {
+    /// Require the `Deserializer` to figure out how to drive the visitor based
+    /// on what data type is in the input.
+    fn deserialize_any2<V>(self, visitor: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: serde::de::Visitor<'de>;
+}
+
 #[derive(Clone, Copy)]
 #[doc(hidden)]
 pub struct Expr<T>(pub T);
@@ -229,6 +238,15 @@ impl<S1: serde::ser::Serialize> serde::ser::Serialize for Expr<S1> {
 #[derive(Clone, Copy)]
 #[doc(hidden)]
 pub struct Null;
+
+impl<'de> crate::Deserializer<'de> for Null {
+    fn deserialize_any2<V>(self, visitor: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_none()
+    }
+}
 
 impl<'de> serde::de::Deserializer<'de> for Null {
     type Error = serde::de::value::Error;
@@ -317,6 +335,7 @@ where
     U: serde::ser::Serialize,
     V: KeyValuePairSer,
 {
+    #[inline]
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap,
@@ -329,6 +348,7 @@ where
         Ok(())
     }
 
+    #[inline(always)]
     fn size(&self) -> usize {
         1 + self.second.size()
     }
@@ -352,6 +372,7 @@ impl<'de> KeyValuePairDe<'de> for () {
     }
 }
 impl KeyValuePairSer for () {
+    #[inline(always)]
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap,
@@ -359,6 +380,7 @@ impl KeyValuePairSer for () {
         Ok(())
     }
 
+    #[inline(always)]
     fn size(&self) -> usize {
         0
     }
@@ -386,6 +408,14 @@ pub struct Map<T>(pub T);
 
 struct MapState<T>(T);
 
+impl<'de, T: KeyValuePairDe<'de>> crate::Deserializer<'de> for Map<T> {
+    fn deserialize_any2<V>(self, visitor: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_map(MapState(self.0))
+    }
+}
 impl<'de, T: KeyValuePairDe<'de>> serde::de::Deserializer<'de> for Map<T> {
     type Error = serde::de::value::Error;
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -455,6 +485,7 @@ where
     T: serde::ser::Serialize,
     U: ItemSer,
 {
+    #[inline]
     fn serialize<S>(&self, seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq,
@@ -466,6 +497,7 @@ where
         Ok(())
     }
 
+    #[inline(always)]
     fn size(&self) -> usize {
         1 + self.second.size()
     }
@@ -480,6 +512,7 @@ impl<'de> ItemDe<'de> for () {
     }
 }
 impl ItemSer for () {
+    #[inline(always)]
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq,
@@ -487,6 +520,7 @@ impl ItemSer for () {
         Ok(())
     }
 
+    #[inline(always)]
     fn size(&self) -> usize {
         0
     }
@@ -510,6 +544,14 @@ pub struct List<T>(pub T);
 
 struct ListState<T>(T);
 
+impl<'de, T: ItemDe<'de>> crate::Deserializer<'de> for List<T> {
+    fn deserialize_any2<V>(self, visitor: V) -> Result<V::Value, serde::de::value::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_seq(ListState(self.0))
+    }
+}
 impl<'de, T: ItemDe<'de>> serde::de::Deserializer<'de> for List<T> {
     type Error = serde::de::value::Error;
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
