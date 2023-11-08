@@ -4,7 +4,7 @@
 [crates.io]: https://crates.io/crates/typed-json
 
 Typed JSON provides a `json!` macro to build an `impl serde::Serialize`
-objects with very natural JSON syntax.
+type with very natural JSON syntax.
 
 ```rust
 use typed_json::json;
@@ -51,7 +51,7 @@ This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0
 ## Benchmark
 
 The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
-the `typed_json_core` benchmark uses `serde-json-core` to encode to a `heapless::String`.
+The `typed_json_core` benchmark uses `serde-json-core` to encode to a `heapless::String`.
 
 ```
 Timer precision: 41 ns
@@ -71,9 +71,9 @@ feature:
 typed_json = { version = "0.1", default-features = false }
 ```
 
-To encode the `Serialize`` type to JSON:
+To encode the `Serialize` type to JSON:
 
-you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc`` feature
+you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc` feature
 ```toml
 [dependencies]
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }

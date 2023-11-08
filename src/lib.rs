@@ -1,7 +1,7 @@
 //! # Typed JSON
 //!
 //! Typed JSON provides a [`json!` macro][crate::json] to build an [`impl serde::Serialize`](serde::Serialize)
-//! objects with very natural JSON syntax.
+//! type with very natural JSON syntax.
 //!
 //! ```
 //! use typed_json::json;
@@ -52,7 +52,7 @@
 //! ## Benchmark
 //!
 //! The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
-//! the `typed_json_core` benchmark uses `serde-json-core` to encode to a [`heapless::String`](https://docs.rs/heapless/0.7.16/heapless/index.html).
+//! The `typed_json_core` benchmark uses `serde-json-core` to encode to a [`heapless::String`](https://docs.rs/heapless/0.7.16/heapless/index.html).
 //!
 //! ```text
 //! Timer precision: 41 ns
@@ -72,9 +72,9 @@
 //! typed_json = { version = "0.1", default-features = false }
 //! ```
 //!
-//! To encode the `Serialize`` type to JSON:
+//! To encode the `Serialize` type to JSON:
 //!
-//! you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc`` feature
+//! you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc` feature
 //! ```toml
 //! [dependencies]
 //! serde_json = { version = "1.0", default-features = false, features = ["alloc"] }

@@ -1,4 +1,4 @@
-/// Construct an [`impl serde::Serialize`](serde::Serialize) from a JSON literal.
+/// Construct an [`impl serde::Serialize`](serde::Serialize) type from a JSON literal.
 ///
 /// ```
 /// # use typed_json::json;
