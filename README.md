@@ -3,8 +3,8 @@
 [Latest Version]: https://img.shields.io/crates/v/typed-json.svg
 [crates.io]: https://crates.io/crates/typed-json
 
-Typed JSON provides a `json!` macro to build `impl serde::Serialize`
-objects with very natural JSON syntax.
+Typed JSON provides a `json!` macro to build an `impl serde::Serialize`
+type with very natural JSON syntax.
 
 ```rust
 use typed_json::json;

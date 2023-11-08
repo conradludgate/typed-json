@@ -1,7 +1,7 @@
 //! # Typed JSON
 //!
-//! Typed JSON provides a [`json!` macro][crate::json] to build [`impl serde::Serialize`](serde::Serialize)
-//! objects with very natural JSON syntax.
+//! Typed JSON provides a [`json!` macro][crate::json] to build an [`impl serde::Serialize`](serde::Serialize)
+//! type with very natural JSON syntax.
 //!
 //! ```
 //! use typed_json::json;
