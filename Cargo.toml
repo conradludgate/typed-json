@@ -13,10 +13,11 @@ rust-version = "1.56"
 
 [features]
 default = ["std"]
-std = ["serde/std"]
+std = ["serde/std", "serde_json", "serde_json?/std"]
 
 [dependencies]
 serde = { version = "1.0.166", default-features = false }
+serde_json = { version = "1.0.108", default-features = false, optional=true }
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -34,4 +35,5 @@ harness = false
 name = "serialize_large"
 
 [package.metadata.docs.rs]
+all-features = true
 rustdoc-args = ["--cfg", "docsrs"]

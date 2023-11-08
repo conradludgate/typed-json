@@ -573,7 +573,7 @@ fn serde_json() -> String {
       "$schema": "http://json-schema.org/schema#",
       "type": "object"
     }};
-    serde_json::to_string(&data).unwrap()
+    data.to_string()
 }
 
 #[divan::bench]
@@ -1146,5 +1146,5 @@ fn typed_json() -> String {
       "$schema": "http://json-schema.org/schema#",
       "type": "object"
     }};
-    serde_json::to_string(&data).unwrap()
+    data.to_string()
 }

@@ -61,9 +61,12 @@ serialize_string    fastest       │ slowest       │ median        │ mean  
 ╰─ typed_json_core  215.2 ns      │ 742.5 ns      │ 229.5 ns      │ 229.7 ns      │ 10000   │ 320000
 ```
 
+> Note: The benchmarks use `serde_json::to_string` as it's significantly faster than the `ToString`/`Display` implementation,
+> both for `serde_json::json` and `typed_json::json`
+
 # No-std support
 
-It is possible to use typed_json with only `core`. Disable the default "std"
+It is possible to use `typed_json` with only `core`. Disable the default "std"
 feature:
 
 ```toml
@@ -74,12 +77,14 @@ typed_json = { version = "0.1", default-features = false }
 To encode the `Serialize` type to JSON:
 
 you will either need [`serde_json`](https://docs.rs/serde_json/latest/serde_json/index.html) with the `alloc` feature
+
 ```toml
 [dependencies]
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 ```
 
 or [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/index.html) with no dependency on `alloc`
+
 ```toml
 [dependencies]
 serde-json-core = "0.5.1"
@@ -87,9 +92,86 @@ serde-json-core = "0.5.1"
 
 # Compile time benchmarks
 
-There's no such thing as a true zero-cost-abstraction.
+There's no such thing as a true zero-cost abstraction.
 
-I measured the compile times using the large service JSON from https://kubernetesjsonschema.dev/ and running
+I measured the compile times using the large service JSON from <https://kubernetesjsonschema.dev/>.
+
+## Many small documents
+
+In this test, I have split the above JSON file into 31 reasonably-sized documents
+
+### Debug
+
+```sh
+$ hyperfine \
+    --command-name "typed_json" \
+    "pushd tests/crates/stress3 && touch src/main.rs && cargo build" \
+    --command-name "serde_json" \
+    "pushd tests/crates/stress4 && touch src/main.rs && cargo build"
+
+Benchmark 1: typed_json
+  Time (mean ± σ):     132.2 ms ±   3.7 ms    [User: 127.9 ms, System: 73.4 ms]
+  Range (min … max):   126.3 ms … 140.9 ms    22 runs
+
+Benchmark 2: serde_json
+  Time (mean ± σ):     145.7 ms ±   3.6 ms    [User: 131.9 ms, System: 97.5 ms]
+  Range (min … max):   139.6 ms … 153.2 ms    20 runs
+
+Summary
+  typed_json ran
+    1.10 ± 0.04 times faster than serde_json
+```
+
+### Release
+
+```sh
+$ hyperfine \
+    --command-name "typed_json" \
+    "pushd tests/crates/stress3 && touch src/main.rs && cargo build --release" \
+    --command-name "serde_json" \
+    "pushd tests/crates/stress4 && touch src/main.rs && cargo build --release"
+
+Benchmark 1: typed_json
+  Time (mean ± σ):     632.7 ms ±  10.2 ms    [User: 961.5 ms, System: 70.2 ms]
+  Range (min … max):   610.5 ms … 647.2 ms    10 runs
+
+Benchmark 2: serde_json
+  Time (mean ± σ):      1.001 s ±  0.020 s    [User: 1.188 s, System: 0.077 s]
+  Range (min … max):    0.973 s …  1.029 s    10 runs
+
+Summary
+  typed_json ran
+    1.58 ± 0.04 times faster than serde_json
+```
+
+## One off large document
+
+In this test, I have included the single JSON file in verbatim.
+I don't think this is a realistic use case but still interesting
+
+### Debug
+
+```sh
+$ hyperfine \
+    --command-name "typed_json" \
+    "pushd tests/crates/stress1 && touch src/main.rs && cargo build" \
+    --command-name "serde_json" \
+    "pushd tests/crates/stress2 && touch src/main.rs && cargo build"
+
+Benchmark 1: typed_json
+  Time (mean ± σ):     137.7 ms ±   4.6 ms    [User: 134.5 ms, System: 74.9 ms]
+  Range (min … max):   128.1 ms … 146.1 ms    21 runs
+
+Benchmark 2: serde_json
+  Time (mean ± σ):     148.5 ms ±   6.8 ms    [User: 133.5 ms, System: 101.3 ms]
+  Range (min … max):   139.3 ms … 164.6 ms    17 runs
+
+Summary
+  typed_json ran
+    1.08 ± 0.06 times faster than serde_json
+```
+
+### Release
 
 ```sh
 $ hyperfine \
@@ -111,4 +193,7 @@ Summary
     2.04 ± 0.02 times faster than typed_json
 ```
 
-So, keep in mind that typed_json is almost 2x slower to compile.
+## Conclusion
+
+I don't think I can conclusively say that typed-json introduces a compile time regression in standard use.
+At the extremes it likely will need to compile many more types but in standard use it can re-use a lot of prior compilations.

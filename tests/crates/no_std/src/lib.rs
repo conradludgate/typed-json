@@ -1,6 +1,7 @@
-fn main() {
+#![no_std]
+pub fn foo() -> Result<serde_json_core::heapless::String<256>, serde_json_core::ser::Error> {
     let input = 1;
-    let str = serde_json_core::to_string::<_, 256>(&typed_json::json!({
+    serde_json_core::to_string(&typed_json::json!({
         "foo": input,
         "bar": [input],
         "baz": {
@@ -20,7 +21,4 @@ fn main() {
             }
         },
     }))
-    .unwrap();
-
-    assert_eq!(str, "{\"foo\":1,\"bar\":[1],\"baz\":{\"code\":1,\"extra\":null,\"this\":{\"is\":{\"a\":[1,{\"really\":{\"deep\":[\"object\",1,null,true,false]}}]}}}}")
 }

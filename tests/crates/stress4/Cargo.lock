@@ -75,18 +75,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "typed-json"
-version = "0.1.1"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "typed_json_test"
 version = "0.0.0"
 dependencies = [
  "serde_json",
- "typed-json",
 ]
 
 [[package]]
