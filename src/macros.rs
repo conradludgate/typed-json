@@ -136,25 +136,20 @@ macro_rules! json_internal {
     // Done.
     (@object () () ()) => { () };
 
-    // Insert the current entry followed by trailing comma.
-    (@object [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
+    // Insert the current entry.
+    (@object [$($key:tt)+] ($value:expr) $(, $($rest:tt)*)? ) => {
         $crate::KVList {
-            first: ::core::option::Option::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
-            second: json_internal!(@object () ($($rest)*) ($($rest)*)),
+            first: ::core::option::Option::Some($crate::KV::Pair(
+                $crate::ඞ::zst_expr!(json_internal!($($key)*)),
+                $crate::ඞ::zst_expr!($value),
+            )),
+            second: json_internal!(@object () ( $($($rest)*)? ) ( $($($rest)*)? )),
         }
     };
 
     // Current entry followed by unexpected token.
     (@object [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
         json_unexpected!($unexpected)
-    };
-
-    // Insert the last entry without trailing comma.
-    (@object [$($key:tt)+] ($value:expr)) => {
-        $crate::KVList {
-            first: ::core::option::Option::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
-            second: (),
-        }
     };
 
     // Next value is `null`.
