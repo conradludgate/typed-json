@@ -348,7 +348,7 @@ where
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     fn size(&self) -> usize {
         1 + self.second.size()
     }
@@ -372,7 +372,7 @@ impl<'de> KeyValuePairDe<'de> for () {
     }
 }
 impl KeyValuePairSer for () {
-    #[inline(always)]
+    #[inline]
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeMap,
@@ -380,7 +380,7 @@ impl KeyValuePairSer for () {
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     fn size(&self) -> usize {
         0
     }
@@ -497,7 +497,7 @@ where
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     fn size(&self) -> usize {
         1 + self.second.size()
     }
@@ -512,7 +512,7 @@ impl<'de> ItemDe<'de> for () {
     }
 }
 impl ItemSer for () {
-    #[inline(always)]
+    #[inline]
     fn serialize<S>(&self, _seq: &mut S) -> Result<(), S::Error>
     where
         S: serde::ser::SerializeSeq,
@@ -520,7 +520,7 @@ impl ItemSer for () {
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     fn size(&self) -> usize {
         0
     }
