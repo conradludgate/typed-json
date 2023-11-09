@@ -139,3 +139,24 @@ pub use ඞzst_expr as zst_expr;
         }
     }
 }
+
+#[test]
+fn conrad_pls()
+where
+    'static :,
+{}
+
+#[test]
+fn conrad_pls_dont_do_it()
+{
+    struct ScopeGuard<F: FnMut()>(F);
+    impl<F : FnMut()> Drop for ScopeGuard<F> {
+        fn drop(&mut self)
+        {}
+    }
+
+    let mut slot = None;
+    return match &drop(()) { temporary => {
+        slot.replace(ScopeGuard(move || _ = (temporary, )));
+    }}
+}
