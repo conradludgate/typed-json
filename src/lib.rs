@@ -19,7 +19,6 @@ pub mod __private {
     pub use crate::array::Array;
     pub use crate::expr_de::Expr;
     pub use crate::map::{Map, KV};
-    pub use crate::HList;
     pub use crate::Null;
 }
 
@@ -90,20 +89,13 @@ impl<T> DeShared for Option<T> {
     }
 }
 
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-pub struct HList<T, U> {
-    pub first: T,
-    pub second: U,
-}
-
-impl<T, U> DeShared for HList<T, U>
+impl<T, U> DeShared for (T, U)
 where
     T: DeShared,
     U: DeShared,
 {
     fn is_done(&self) -> bool {
-        self.first.is_done() && self.second.is_done()
+        self.0.is_done() && self.1.is_done()
     }
 }
 
@@ -176,21 +168,25 @@ mod tests {
         let value3 = format!("hello {}", "world");
 
         let data = json!({
-            "codes": [value1, value2],
-            "message": value3
+            "codes": [400u64, value1, value2],
+            "message": value3,
+            "contact": "contact support at support@example.com"
         });
 
         serde_test::assert_ser_tokens(
             &data,
             &[
-                Token::Map { len: Some(2) },
+                Token::Map { len: Some(3) },
                 Token::Str("codes"),
-                Token::Seq { len: Some(2) },
+                Token::Seq { len: Some(3) },
+                Token::U64(400),
                 Token::I32(123),
                 Token::I32(456),
                 Token::SeqEnd,
                 Token::Str("message"),
                 Token::Str("hello world"),
+                Token::Str("contact"),
+                Token::Str("contact support at support@example.com"),
                 Token::MapEnd,
             ],
         );

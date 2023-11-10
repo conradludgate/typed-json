@@ -102,32 +102,40 @@ serde-json-core = "0.5.1"
 > Note: all of this is implementation detail and **none of this is stable API**
 
 ```rust,ignore
-let data = typed_json::json!({
-    "codes": [value1, value2],
-    "message": value3
-})
+let data = json!({
+    "codes": [400, value1, value2],
+    "message": value3,
+    "contact": "contact support at support@example.com"
+});
 ```
 
-Expands into
+Expands into something like
 
 ```rust,ignore
-typed_json::__private::Map(
-    typed_json::__private::HList {
-      first: Some(typed_json::__private::KV::Pair(
-          typed_json::__private::Expr("codes"),
-          typed_json::__private::Array(
-              typed_json::__private::HList {
-                  first: Some(typed_json::__private::Expr(value1)),
-                  second: Some(typed_json::__private::Expr(value2)),
-              },
-          ),
-      )),
-      second: Some(typed_json::__private::KV::Pair(
-          typed_json::__private::Expr("message"),
-          typed_json::__private::Expr(value3),
-      )),
-  }
-)
+let data = typed_json::__private::Map(hlist![
+    typed_json::__private::KV::Pair(
+        typed_json::__private::Expr("codes"),
+        typed_json::__private::Array(hlist![
+            typed_json::__private::Expr(400),
+            typed_json::__private::Expr(value1),
+            typed_json::__private::Expr(value2),
+        ]),
+    ),
+    typed_json::__private::KV::Pair(
+        typed_json::__private::Expr("message"),
+        typed_json::__private::Expr(value3)
+    ),
+    typed_json::__private::KV::Pair(
+        typed_json::__private::Expr("contact"),
+        typed_json::__private::Expr("contact support at support@example.com")
+    ),
+]);
+```
+
+where `hlist![a, b, c]` would expand into
+
+```rust,ignore
+(a, (b, c))
 ```
 
 # Compile time benchmarks

@@ -1,4 +1,4 @@
-use crate::{DeShared, HList};
+use crate::DeShared;
 
 impl<'de, T> ItemDe<'de> for Option<T>
 where
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<'de, T, U> ItemDe<'de> for HList<T, U>
+impl<'de, T, U> ItemDe<'de> for (T, U)
 where
     T: ItemDe<'de>,
     U: ItemDe<'de>,
@@ -44,15 +44,15 @@ where
     where
         V: serde::de::DeserializeSeed<'de>,
     {
-        if !self.first.is_done() {
-            self.first.value_seed(seed)
+        if !self.0.is_done() {
+            self.0.value_seed(seed)
         } else {
-            self.second.value_seed(seed)
+            self.1.value_seed(seed)
         }
     }
 }
 
-impl<T, U> ItemSer for HList<T, U>
+impl<T, U> ItemSer for (T, U)
 where
     T: ItemSer,
     U: ItemSer,
@@ -62,14 +62,14 @@ where
     where
         S: serde::ser::SerializeSeq,
     {
-        self.first.serialize(seq)?;
-        self.second.serialize(seq)?;
+        self.0.serialize(seq)?;
+        self.1.serialize(seq)?;
         Ok(())
     }
 
     #[inline]
     fn size(&self) -> usize {
-        self.first.size() + self.second.size()
+        self.0.size() + self.1.size()
     }
 }
 

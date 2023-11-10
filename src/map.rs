@@ -1,4 +1,4 @@
-use crate::{DeShared, HList};
+use crate::DeShared;
 
 #[doc(hidden)]
 #[derive(Clone, Copy)]
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<T, U> KeyValuePairSer for HList<T, U>
+impl<T, U> KeyValuePairSer for (T, U)
 where
     T: KeyValuePairSer,
     U: KeyValuePairSer,
@@ -54,14 +54,14 @@ where
     where
         S: serde::ser::SerializeMap,
     {
-        self.first.serialize(seq)?;
-        self.second.serialize(seq)?;
+        self.0.serialize(seq)?;
+        self.1.serialize(seq)?;
         Ok(())
     }
 
     #[inline]
     fn size(&self) -> usize {
-        self.first.size() + self.second.size()
+        self.0.size() + self.1.size()
     }
 }
 

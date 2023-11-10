@@ -141,12 +141,10 @@ macro_rules! json_internal {
     };
 
     // Insert the current entry followed by trailing comma.
-    (@object [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
-        $crate::__private::HList {
-            first: ::core::option::Option::Some($crate::__private::KV::Pair(json_internal!($($key)*), $value)),
-            second: json_internal!(@object () ($($rest)*) ($($rest)*)),
-        }
-    };
+    (@object [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {(
+        ::core::option::Option::Some($crate::__private::KV::Pair(json_internal!($($key)*), $value)),
+        json_internal!(@object () ($($rest)*) ($($rest)*)),
+    )};
 
     // Current entry followed by unexpected token.
     (@object [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
@@ -279,12 +277,10 @@ macro_rules! json_internal_vec {
     ($first:expr $(,)?) => {
         ::core::option::Option::Some($first)
     };
-    ($first:expr $(, $rest:expr)* $(,)?) => {
-        $crate::__private::HList {
-            first: ::core::option::Option::Some($first),
-            second: json_internal_vec!($($rest),*),
-        }
-    };
+    ($first:expr $(, $rest:expr)* $(,)?) => {(
+        ::core::option::Option::Some($first),
+        json_internal_vec!($($rest),*),
+    )};
     () => {
         ()
     };
