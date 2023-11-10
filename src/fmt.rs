@@ -3,11 +3,11 @@ use std::io;
 
 use serde::Serialize;
 
-use crate::Array;
+use crate::array::Array;
+use crate::array::ItemSer;
+use crate::map::KeyValuePairSer;
+use crate::map::Map;
 use crate::Expr;
-use crate::ItemSer;
-use crate::KeyValuePairSer;
-use crate::Map;
 use crate::Null;
 
 struct WriterFormatter<'a, 'b: 'a> {

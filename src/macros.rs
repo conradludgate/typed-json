@@ -137,13 +137,13 @@ macro_rules! json_internal {
     (@object () () ()) => { () };
 
     (@object [$($key:tt)+] ($value:expr) $(,)?) => {
-        $crate::Option2::Some($crate::KV::Pair(json_internal!($($key)*), $value))
+        ::core::option::Option::Some($crate::__private::KV::Pair(json_internal!($($key)*), $value))
     };
 
     // Insert the current entry followed by trailing comma.
     (@object [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
-        $crate::HList {
-            first: $crate::Option2::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
+        $crate::__private::HList {
+            first: ::core::option::Option::Some($crate::__private::KV::Pair(json_internal!($($key)*), $value)),
             second: json_internal!(@object () ($($rest)*) ($($rest)*)),
         }
     };
@@ -236,52 +236,52 @@ macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
 
     (null) => {
-        $crate::Null
+        $crate::__private::Null
     };
 
     (true) => {
-        $crate::Expr(true)
+        $crate::__private::Expr(true)
     };
 
     (false) => {
-        $crate::Expr(false)
+        $crate::__private::Expr(false)
     };
 
     ([]) => {
-        $crate::Array(())
+        $crate::__private::Array(())
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::Array(json_internal!(@array [] $($tt)+))
+        $crate::__private::Array(json_internal!(@array [] $($tt)+))
     };
 
     ({}) => {
-        $crate::Map(())
+        $crate::__private::Map(())
     };
 
     ({ $($tt:tt)+ }) => {
-        $crate::Map(json_internal!(@object () ($($tt)+) ($($tt)+)))
+        $crate::__private::Map(json_internal!(@object () ($($tt)+) ($($tt)+)))
     };
 
     // Any Serialize type: numbers, strings, struct literals, variables etc.
     // Must be below every other rule.
     ($other:expr) => {
-        $crate::Expr($other)
+        $crate::__private::Expr($other)
     };
 }
 
 // The json_internal macro above cannot invoke vec directly because it uses
-// local_inner_macros. A vec invocation there would resolve to $crate::vec.
+// local_inner_macros. A vec invocation there would resolve to $crate::__private::vec.
 // Instead invoke vec here outside of local_inner_macros.
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
     ($first:expr $(,)?) => {
-        $crate::Option2::Some($first)
+        ::core::option::Option::Some($first)
     };
     ($first:expr $(, $rest:expr)* $(,)?) => {
-        $crate::HList {
-            first: $crate::Option2::Some($first),
+        $crate::__private::HList {
+            first: ::core::option::Option::Some($first),
             second: json_internal_vec!($($rest),*),
         }
     };

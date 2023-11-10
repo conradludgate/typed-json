@@ -111,25 +111,29 @@ let data = typed_json::json!({
 Expands into
 
 ```rust,ignore
-typed_json::Map(typed_json::HList {
-    first: Some(typed_json::KV::Pair(
-        typed_json::Expr("codes"),
-        typed_json::Array(typed_json::HList {
-            first: Some(typed_json::Expr(value1)),
-            second: Some(typed_json::Expr(value2)),
-        }),
-    )),
-    second: Some(typed_json::KV::Pair(
-        typed_json::Expr("message"),
-        typed_json::Expr(value3),
-    )),
-})
+typed_json::__private::Map(
+    typed_json::__private::HList {
+      first: Some(typed_json::__private::KV::Pair(
+          typed_json::__private::Expr("codes"),
+          typed_json::__private::Array(
+              typed_json::__private::HList {
+                  first: Some(typed_json::__private::Expr(value1)),
+                  second: Some(typed_json::__private::Expr(value2)),
+              },
+          ),
+      )),
+      second: Some(typed_json::__private::KV::Pair(
+          typed_json::__private::Expr("message"),
+          typed_json::__private::Expr(value3),
+      )),
+  }
+)
 ```
 
 # Compile time benchmarks
 
 There's no such thing as a true zero-cost abstraction. However, it seems that sometimes
-`typed-json` compiles faster than `serde_json` and sometimes the opposite is true.
+`typed-json` compiles faster than `serde_json`, and sometimes the opposite is true.
 
 I measured the compile times using the large service JSON from <https://kubernetesjsonschema.dev/>.
 
@@ -150,16 +154,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     134.4 ms ±   2.8 ms    [User: 130.6 ms, System: 74.1 ms]
-  Range (min … max):   130.3 ms … 139.5 ms    22 runs
-
+  Time (mean ± σ):     143.4 ms ±   5.8 ms    [User: 129.7 ms, System: 74.8 ms]
+  Range (min … max):   138.0 ms … 161.6 ms    20 runs
+ 
 Benchmark 2: serde_json
-  Time (mean ± σ):     149.5 ms ±   2.1 ms    [User: 134.2 ms, System: 100.0 ms]
-  Range (min … max):   144.4 ms … 153.1 ms    19 runs
-
+  Time (mean ± σ):     156.3 ms ±   5.1 ms    [User: 131.8 ms, System: 94.9 ms]
+  Range (min … max):   150.4 ms … 173.5 ms    18 runs
+ 
 Summary
   typed_json ran
-    1.11 ± 0.03 times faster than serde_json
+    1.09 ± 0.06 times faster than serde_json
 ```
 
 ### Release
@@ -172,19 +176,19 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     562.7 ms ±  13.3 ms    [User: 883.2 ms, System: 63.1 ms]
-  Range (min … max):   541.6 ms … 580.8 ms    10 runs
-
+  Time (mean ± σ):     581.5 ms ±   8.7 ms    [User: 908.2 ms, System: 68.9 ms]
+  Range (min … max):   573.3 ms … 602.8 ms    10 runs
+ 
 Benchmark 2: serde_json
-  Time (mean ± σ):     991.6 ms ±  20.5 ms    [User: 1188.3 ms, System: 74.5 ms]
-  Range (min … max):   961.4 ms … 1020.8 ms    10 runs
-
+  Time (mean ± σ):      1.079 s ±  0.018 s    [User: 1.268 s, System: 0.082 s]
+  Range (min … max):    1.059 s …  1.123 s    10 runs
+ 
 Summary
   typed_json ran
-    1.76 ± 0.06 times faster than serde_json
+    1.86 ± 0.04 times faster than serde_json
 ```
 
-## One off large document
+## One-off large document
 
 In this test, I have included the single JSON file in verbatim.
 I don't think this is a realistic use case but still interesting
@@ -237,5 +241,5 @@ Summary
 
 ## Conclusion
 
-I don't think I can conclusively say that typed-json introduces a compile time regression in standard use.
-At the extremes it likely will need to compile many more types but in standard use it can re-use a lot of prior compilations.
+I don't think I can conclusively say that typed-json introduces a compile-time regression in standard use.
+At the extremes, it likely will need to compile many more types but in standard use, it can re-use a lot of prior compilations.

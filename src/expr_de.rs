@@ -1,6 +1,7 @@
 use serde::{de::Visitor, forward_to_deserialize_any, Deserializer};
 
-use crate::Expr;
+#[derive(Clone, Copy)]
+pub struct Expr<T>(pub T);
 
 impl<'de, D: crate::Deserializer<'de>> Deserializer<'de> for Expr<D> {
     type Error = serde::de::value::Error;
