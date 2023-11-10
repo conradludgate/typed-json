@@ -170,7 +170,7 @@ mod tests {
         let data = json!({
             "codes": [400u64, value1, value2, 1, 2, 3, 4, 5],
             "message": value3,
-            "contact": "contact support at support@example.com"
+            "contact": "contact support at support@example.com",
         });
 
         serde_test::assert_ser_tokens(

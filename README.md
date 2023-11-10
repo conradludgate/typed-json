@@ -162,16 +162,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     140.2 ms ±   6.8 ms    [User: 130.1 ms, System: 78.3 ms]
-  Range (min … max):   132.2 ms … 161.9 ms    20 runs
+  Time (mean ± σ):     148.6 ms ±   3.7 ms    [User: 141.2 ms, System: 82.0 ms]
+  Range (min … max):   143.3 ms … 157.0 ms    20 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):     153.2 ms ±   6.5 ms    [User: 131.9 ms, System: 99.1 ms]
-  Range (min … max):   144.3 ms … 170.0 ms    20 runs
-
+  Time (mean ± σ):     151.7 ms ±   4.8 ms    [User: 134.9 ms, System: 98.5 ms]
+  Range (min … max):   143.2 ms … 163.0 ms    20 runs
+ 
 Summary
   typed_json ran
-    1.09 ± 0.07 times faster than serde_json
+    1.02 ± 0.04 times faster than serde_json
 ```
 
 ### Release
@@ -184,16 +184,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     535.7 ms ±  10.6 ms    [User: 860.8 ms, System: 66.5 ms]
-  Range (min … max):   520.3 ms … 559.6 ms    10 runs
+  Time (mean ± σ):     538.3 ms ±   7.1 ms    [User: 877.5 ms, System: 65.7 ms]
+  Range (min … max):   527.4 ms … 550.9 ms    10 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):      1.010 s ±  0.019 s    [User: 1.202 s, System: 0.077 s]
-  Range (min … max):    0.987 s …  1.043 s    10 runs
+  Time (mean ± σ):      1.003 s ±  0.013 s    [User: 1.194 s, System: 0.075 s]
+  Range (min … max):    0.972 s …  1.020 s    10 runs
  
 Summary
   typed_json ran
-    1.89 ± 0.05 times faster than serde_json
+    1.86 ± 0.04 times faster than serde_json
 ```
 
 ## One-off large document
@@ -211,16 +211,16 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     143.1 ms ±   7.1 ms    [User: 133.7 ms, System: 82.0 ms]
-  Range (min … max):   136.7 ms … 162.9 ms    20 runs
+  Time (mean ± σ):     157.5 ms ±   6.1 ms    [User: 147.9 ms, System: 83.5 ms]
+  Range (min … max):   152.1 ms … 178.4 ms    18 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):     155.3 ms ±   4.7 ms    [User: 133.3 ms, System: 98.3 ms]
-  Range (min … max):   146.5 ms … 164.3 ms    19 runs
+  Time (mean ± σ):     151.7 ms ±   4.5 ms    [User: 133.6 ms, System: 97.9 ms]
+  Range (min … max):   145.1 ms … 162.4 ms    18 runs
  
 Summary
-  typed_json ran
-    1.09 ± 0.06 times faster than serde_json
+  serde_json ran
+    1.04 ± 0.05 times faster than typed_json
 ```
 
 ### Release
@@ -233,16 +233,16 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):      1.539 s ±  0.017 s    [User: 2.458 s, System: 0.091 s]
-  Range (min … max):    1.509 s …  1.560 s    10 runs
+  Time (mean ± σ):      1.501 s ±  0.012 s    [User: 2.324 s, System: 0.090 s]
+  Range (min … max):    1.480 s …  1.520 s    10 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):     940.7 ms ±  13.7 ms    [User: 1134.9 ms, System: 71.3 ms]
-  Range (min … max):   917.5 ms … 956.9 ms    10 runs
+  Time (mean ± σ):     947.3 ms ±  20.4 ms    [User: 1142.0 ms, System: 71.2 ms]
+  Range (min … max):   918.7 ms … 989.0 ms    10 runs
  
 Summary
   serde_json ran
-    1.64 ± 0.03 times faster than typed_json
+    1.58 ± 0.04 times faster than typed_json
 ```
 
 </details>
