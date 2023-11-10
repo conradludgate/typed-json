@@ -3,10 +3,10 @@ use std::io;
 
 use serde::Serialize;
 
+use crate::Array;
 use crate::Expr;
 use crate::ItemSer;
 use crate::KeyValuePairSer;
-use crate::List;
 use crate::Map;
 use crate::Null;
 
@@ -75,7 +75,7 @@ impl<T: KeyValuePairSer> fmt::Display for Map<T> {
     }
 }
 
-impl<T: ItemSer> fmt::Display for List<T> {
+impl<T: ItemSer> fmt::Display for Array<T> {
     /// Display a JSON value as a string.
     ///
     /// ```

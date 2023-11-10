@@ -136,10 +136,14 @@ macro_rules! json_internal {
     // Done.
     (@object () () ()) => { () };
 
+    (@object [$($key:tt)+] ($value:expr) $(,)?) => {
+        $crate::Option2::Some($crate::KV::Pair(json_internal!($($key)*), $value))
+    };
+
     // Insert the current entry followed by trailing comma.
     (@object [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
-        $crate::KVList {
-            first: ::core::option::Option::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
+        $crate::HList {
+            first: $crate::Option2::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
             second: json_internal!(@object () ($($rest)*) ($($rest)*)),
         }
     };
@@ -147,14 +151,6 @@ macro_rules! json_internal {
     // Current entry followed by unexpected token.
     (@object [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
         json_unexpected!($unexpected)
-    };
-
-    // Insert the last entry without trailing comma.
-    (@object [$($key:tt)+] ($value:expr)) => {
-        $crate::KVList {
-            first: ::core::option::Option::Some($crate::KV::Pair(json_internal!($($key)*), $value)),
-            second: (),
-        }
     };
 
     // Next value is `null`.
@@ -252,11 +248,11 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::List(())
+        $crate::Array(())
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::List(json_internal!(@array [] $($tt)+))
+        $crate::Array(json_internal!(@array [] $($tt)+))
     };
 
     ({}) => {
@@ -280,10 +276,13 @@ macro_rules! json_internal {
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
+    ($first:expr $(,)?) => {
+        $crate::Option2::Some($first)
+    };
     ($first:expr $(, $rest:expr)* $(,)?) => {
-        $crate::List1 {
-            first: ::core::option::Option::Some($first),
-            second:  json_internal_vec!($($rest),*),
+        $crate::HList {
+            first: $crate::Option2::Some($first),
+            second: json_internal_vec!($($rest),*),
         }
     };
     () => {

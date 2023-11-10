@@ -32,8 +32,12 @@ be represented as JSON.
 let full_name = "John Doe";
 let age_last_year = 42;
 
+fn random_phone() -> String {
+    "0".to_owned()
+}
+
 // The type of `john` is `impl serde::Serialize`
-let john = json!({
+let john = typed_json::json!({
     "name": full_name,
     "age": age_last_year + 1,
     "phones": [
@@ -44,25 +48,28 @@ let john = json!({
 
 # Comparison to `serde_json`
 
-This crate provides a typed version of `serde_json::json!()`. What does that mean? It means it performs 0 allocations and it creates
-a custom type for the JSON object you are representing. For one-off JSON documents, this ends up being considerably faster to encode.
-This is 100% compatible with `serde_json::json!` syntax as of `serde_json = "1.0.108"`.
+This crate provides a typed version of [`serde_json::json!()`](https://docs.rs/serde_json/latest/serde_json/macro.json.html).
+What does that mean? It means it performs 0 allocations and it creates a custom type for the JSON object you are representing.
+For one-off JSON documents, this ends up being considerably faster to encode.
+This is 100% compatible with [`serde_json::json!()`](https://docs.rs/serde_json/latest/serde_json/macro.json.html)
+syntax as of `serde_json = "1.0.108"`.
 
 ## Benchmark
 
 The following benchmarks indicate serializing a complex deeply-nested JSON document to a `String`.
-The `typed_json_core` benchmark uses `serde-json-core` to encode to a `heapless::String`.
 
-```
+> Note: the `typed_json_core` benchmark uses [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/index.html) to encode to a `heapless::String`.
+
+```sh
 Timer precision: 41 ns
 serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
-├─ serde_json       707 ns        │ 36.62 µs      │ 791 ns        │ 1.096 µs      │ 10000   │ 10000
-├─ typed_json       154 ns        │ 844.1 ns      │ 163.1 ns      │ 163.5 ns      │ 10000   │ 320000
-╰─ typed_json_core  215.2 ns      │ 742.5 ns      │ 229.5 ns      │ 229.7 ns      │ 10000   │ 320000
+├─ serde_json       739 ns        │ 6.437 µs      │ 780.8 ns      │ 824.2 ns      │ 100000  │ 400000
+├─ typed_json       172.7 ns      │ 852.4 ns      │ 176.6 ns      │ 178.5 ns      │ 100000  │ 3200000
+╰─ typed_json_core  209.2 ns      │ 1.249 µs      │ 219.6 ns      │ 222 ns        │ 100000  │ 3200000
 ```
 
-> Note: The benchmarks use `serde_json::to_string` as it's significantly faster than the `ToString`/`Display` implementation,
-> both for `serde_json::json` and `typed_json::json`
+> Note: The benchmarks use [`serde_json::to_string`](https://docs.rs/serde_json/latest/serde_json/fn.to_string.html)
+> as it's significantly faster than the `ToString`/`Display` implementation, both for `serde_json::json` and `typed_json::json`
 
 # No-std support
 
@@ -90,11 +97,44 @@ or [`serde-json-core`](https://docs.rs/serde-json-core/latest/serde_json_core/in
 serde-json-core = "0.5.1"
 ```
 
+# How it works
+
+> Note: all of this is implementation detail and **none of this is stable API**
+
+```rust,ignore
+let data = typed_json::json!({
+    "codes": [value1, value2],
+    "message": value3
+})
+```
+
+Expands into
+
+```rust,ignore
+typed_json::Map(typed_json::HList {
+    first: Some(typed_json::KV::Pair(
+        typed_json::Expr("codes"),
+        typed_json::Array(typed_json::HList {
+            first: Some(typed_json::Expr(value1)),
+            second: Some(typed_json::Expr(value2)),
+        }),
+    )),
+    second: Some(typed_json::KV::Pair(
+        typed_json::Expr("message"),
+        typed_json::Expr(value3),
+    )),
+})
+```
+
 # Compile time benchmarks
 
-There's no such thing as a true zero-cost abstraction.
+There's no such thing as a true zero-cost abstraction. However, it seems that sometimes
+`typed-json` compiles faster than `serde_json` and sometimes the opposite is true.
 
 I measured the compile times using the large service JSON from <https://kubernetesjsonschema.dev/>.
+
+<details>
+<summary>Benchmark details</summary>
 
 ## Many small documents
 
@@ -110,16 +150,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     132.2 ms ±   3.7 ms    [User: 127.9 ms, System: 73.4 ms]
-  Range (min … max):   126.3 ms … 140.9 ms    22 runs
+  Time (mean ± σ):     134.4 ms ±   2.8 ms    [User: 130.6 ms, System: 74.1 ms]
+  Range (min … max):   130.3 ms … 139.5 ms    22 runs
 
 Benchmark 2: serde_json
-  Time (mean ± σ):     145.7 ms ±   3.6 ms    [User: 131.9 ms, System: 97.5 ms]
-  Range (min … max):   139.6 ms … 153.2 ms    20 runs
+  Time (mean ± σ):     149.5 ms ±   2.1 ms    [User: 134.2 ms, System: 100.0 ms]
+  Range (min … max):   144.4 ms … 153.1 ms    19 runs
 
 Summary
   typed_json ran
-    1.10 ± 0.04 times faster than serde_json
+    1.11 ± 0.03 times faster than serde_json
 ```
 
 ### Release
@@ -132,16 +172,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     632.7 ms ±  10.2 ms    [User: 961.5 ms, System: 70.2 ms]
-  Range (min … max):   610.5 ms … 647.2 ms    10 runs
+  Time (mean ± σ):     562.7 ms ±  13.3 ms    [User: 883.2 ms, System: 63.1 ms]
+  Range (min … max):   541.6 ms … 580.8 ms    10 runs
 
 Benchmark 2: serde_json
-  Time (mean ± σ):      1.001 s ±  0.020 s    [User: 1.188 s, System: 0.077 s]
-  Range (min … max):    0.973 s …  1.029 s    10 runs
+  Time (mean ± σ):     991.6 ms ±  20.5 ms    [User: 1188.3 ms, System: 74.5 ms]
+  Range (min … max):   961.4 ms … 1020.8 ms    10 runs
 
 Summary
   typed_json ran
-    1.58 ± 0.04 times faster than serde_json
+    1.76 ± 0.06 times faster than serde_json
 ```
 
 ## One off large document
@@ -159,16 +199,16 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     137.7 ms ±   4.6 ms    [User: 134.5 ms, System: 74.9 ms]
-  Range (min … max):   128.1 ms … 146.1 ms    21 runs
+  Time (mean ± σ):     135.8 ms ±   2.9 ms    [User: 132.8 ms, System: 73.7 ms]
+  Range (min … max):   132.5 ms … 143.8 ms    22 runs
 
 Benchmark 2: serde_json
-  Time (mean ± σ):     148.5 ms ±   6.8 ms    [User: 133.5 ms, System: 101.3 ms]
-  Range (min … max):   139.3 ms … 164.6 ms    17 runs
+  Time (mean ± σ):     151.8 ms ±   6.2 ms    [User: 133.8 ms, System: 98.1 ms]
+  Range (min … max):   144.3 ms … 171.6 ms    20 runs
 
 Summary
   typed_json ran
-    1.08 ± 0.06 times faster than serde_json
+    1.12 ± 0.05 times faster than serde_json
 ```
 
 ### Release
@@ -181,17 +221,19 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):      2.616 s ±  0.014 s    [User: 3.932 s, System: 0.118 s]
-  Range (min … max):    2.588 s …  2.638 s    10 runs
+  Time (mean ± σ):      1.881 s ±  0.034 s    [User: 2.765 s, System: 0.094 s]
+  Range (min … max):    1.810 s …  1.933 s    10 runs
 
 Benchmark 2: serde_json
-  Time (mean ± σ):      1.281 s ±  0.014 s    [User: 1.554 s, System: 0.088 s]
-  Range (min … max):    1.268 s …  1.305 s    10 runs
+  Time (mean ± σ):     931.1 ms ±  14.4 ms    [User: 1132.1 ms, System: 70.3 ms]
+  Range (min … max):   903.4 ms … 943.2 ms    10 runs
 
 Summary
   serde_json ran
-    2.04 ± 0.02 times faster than typed_json
+    2.02 ± 0.05 times faster than typed_json
 ```
+
+</details>
 
 ## Conclusion
 
