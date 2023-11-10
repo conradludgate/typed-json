@@ -168,7 +168,7 @@ mod tests {
         let value3 = format!("hello {}", "world");
 
         let data = json!({
-            "codes": [400u64, value1, value2],
+            "codes": [400u64, value1, value2, 1, 2, 3, 4, 5],
             "message": value3,
             "contact": "contact support at support@example.com"
         });
@@ -178,10 +178,15 @@ mod tests {
             &[
                 Token::Map { len: Some(3) },
                 Token::Str("codes"),
-                Token::Seq { len: Some(3) },
+                Token::Seq { len: Some(8) },
                 Token::U64(400),
                 Token::I32(123),
                 Token::I32(456),
+                Token::I32(1),
+                Token::I32(2),
+                Token::I32(3),
+                Token::I32(4),
+                Token::I32(5),
                 Token::SeqEnd,
                 Token::Str("message"),
                 Token::Str("hello world"),

@@ -63,9 +63,9 @@ The following benchmarks indicate serializing a complex deeply-nested JSON docum
 ```sh
 Timer precision: 41 ns
 serialize_string    fastest       │ slowest       │ median        │ mean          │ samples │ iters
-├─ serde_json       739 ns        │ 6.437 µs      │ 780.8 ns      │ 824.2 ns      │ 100000  │ 400000
-├─ typed_json       172.7 ns      │ 852.4 ns      │ 176.6 ns      │ 178.5 ns      │ 100000  │ 3200000
-╰─ typed_json_core  209.2 ns      │ 1.249 µs      │ 219.6 ns      │ 222 ns        │ 100000  │ 3200000
+├─ serde_json       765.3 ns      │ 15.1 µs       │ 807 ns        │ 824.9 ns      │ 100000  │ 800000
+├─ typed_json       148.1 ns      │ 1.606 µs      │ 153.3 ns      │ 156 ns        │ 100000  │ 3200000
+╰─ typed_json_core  217.1 ns      │ 2.991 µs      │ 228.8 ns      │ 240.4 ns      │ 100000  │ 3200000
 ```
 
 > Note: The benchmarks use [`serde_json::to_string`](https://docs.rs/serde_json/latest/serde_json/fn.to_string.html)
@@ -132,10 +132,10 @@ let data = typed_json::__private::Map(hlist![
 ]);
 ```
 
-where `hlist![a, b, c]` would expand into
+where `hlist![a, b, c, d, e]` would expand into
 
 ```rust,ignore
-(a, (b, c))
+(a, ((b, c), (d, e)))
 ```
 
 # Compile time benchmarks
@@ -162,16 +162,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     143.4 ms ±   5.8 ms    [User: 129.7 ms, System: 74.8 ms]
-  Range (min … max):   138.0 ms … 161.6 ms    20 runs
+  Time (mean ± σ):     140.2 ms ±   6.8 ms    [User: 130.1 ms, System: 78.3 ms]
+  Range (min … max):   132.2 ms … 161.9 ms    20 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):     156.3 ms ±   5.1 ms    [User: 131.8 ms, System: 94.9 ms]
-  Range (min … max):   150.4 ms … 173.5 ms    18 runs
- 
+  Time (mean ± σ):     153.2 ms ±   6.5 ms    [User: 131.9 ms, System: 99.1 ms]
+  Range (min … max):   144.3 ms … 170.0 ms    20 runs
+
 Summary
   typed_json ran
-    1.09 ± 0.06 times faster than serde_json
+    1.09 ± 0.07 times faster than serde_json
 ```
 
 ### Release
@@ -184,16 +184,16 @@ $ hyperfine \
     "pushd tests/crates/stress4 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     581.5 ms ±   8.7 ms    [User: 908.2 ms, System: 68.9 ms]
-  Range (min … max):   573.3 ms … 602.8 ms    10 runs
+  Time (mean ± σ):     535.7 ms ±  10.6 ms    [User: 860.8 ms, System: 66.5 ms]
+  Range (min … max):   520.3 ms … 559.6 ms    10 runs
  
 Benchmark 2: serde_json
-  Time (mean ± σ):      1.079 s ±  0.018 s    [User: 1.268 s, System: 0.082 s]
-  Range (min … max):    1.059 s …  1.123 s    10 runs
+  Time (mean ± σ):      1.010 s ±  0.019 s    [User: 1.202 s, System: 0.077 s]
+  Range (min … max):    0.987 s …  1.043 s    10 runs
  
 Summary
   typed_json ran
-    1.86 ± 0.04 times faster than serde_json
+    1.89 ± 0.05 times faster than serde_json
 ```
 
 ## One-off large document
@@ -211,16 +211,16 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):     135.8 ms ±   2.9 ms    [User: 132.8 ms, System: 73.7 ms]
-  Range (min … max):   132.5 ms … 143.8 ms    22 runs
-
+  Time (mean ± σ):     143.1 ms ±   7.1 ms    [User: 133.7 ms, System: 82.0 ms]
+  Range (min … max):   136.7 ms … 162.9 ms    20 runs
+ 
 Benchmark 2: serde_json
-  Time (mean ± σ):     151.8 ms ±   6.2 ms    [User: 133.8 ms, System: 98.1 ms]
-  Range (min … max):   144.3 ms … 171.6 ms    20 runs
-
+  Time (mean ± σ):     155.3 ms ±   4.7 ms    [User: 133.3 ms, System: 98.3 ms]
+  Range (min … max):   146.5 ms … 164.3 ms    19 runs
+ 
 Summary
   typed_json ran
-    1.12 ± 0.05 times faster than serde_json
+    1.09 ± 0.06 times faster than serde_json
 ```
 
 ### Release
@@ -233,16 +233,16 @@ $ hyperfine \
     "pushd tests/crates/stress2 && touch src/main.rs && cargo build --release"
 
 Benchmark 1: typed_json
-  Time (mean ± σ):      1.881 s ±  0.034 s    [User: 2.765 s, System: 0.094 s]
-  Range (min … max):    1.810 s …  1.933 s    10 runs
-
+  Time (mean ± σ):      1.539 s ±  0.017 s    [User: 2.458 s, System: 0.091 s]
+  Range (min … max):    1.509 s …  1.560 s    10 runs
+ 
 Benchmark 2: serde_json
-  Time (mean ± σ):     931.1 ms ±  14.4 ms    [User: 1132.1 ms, System: 70.3 ms]
-  Range (min … max):   903.4 ms … 943.2 ms    10 runs
-
+  Time (mean ± σ):     940.7 ms ±  13.7 ms    [User: 1134.9 ms, System: 71.3 ms]
+  Range (min … max):   917.5 ms … 956.9 ms    10 runs
+ 
 Summary
   serde_json ran
-    2.02 ± 0.05 times faster than typed_json
+    1.64 ± 0.03 times faster than typed_json
 ```
 
 </details>

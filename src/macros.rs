@@ -274,15 +274,10 @@ macro_rules! json_internal {
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal_vec {
-    ($first:expr $(,)?) => {
-        ::core::option::Option::Some($first)
-    };
-    ($first:expr $(, $rest:expr)* $(,)?) => {(
-        ::core::option::Option::Some($first),
-        json_internal_vec!($($rest),*),
-    )};
-    () => {
-        ()
+    ($($g:expr),* $(,)?) => {
+        $crate::hlist![
+            $(::core::option::Option::Some($g)),*
+        ]
     };
 }
 
@@ -296,4 +291,30 @@ macro_rules! json_unexpected {
 #[doc(hidden)]
 macro_rules! json_expect_expr_comma {
     ($e:expr , $($tt:tt)*) => {};
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! hlist {
+    // edgecase: no elements
+    () => { () };
+    // edgecase: 1 element
+    ($g0:expr) => {
+        $g0
+    };
+    // take pairs of elements and turn them into tuple-pairs. recurse
+    ($($g0:expr, $g1:expr),*) => {
+        $crate::hlist!($(
+            ($g0, $g1)
+        ),*)
+    };
+    // take pairs of elements, skipping the first, and turn them into tuple-pairs. recurse
+    ($g:expr, $($g0:expr, $g1:expr),*) => {
+        $crate::hlist!(
+            $g,
+            $(
+                ($g0, $g1)
+            ),*
+        )
+    };
 }
